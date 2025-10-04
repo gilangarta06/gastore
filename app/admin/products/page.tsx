@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package } from "lucide-react";
@@ -54,10 +55,12 @@ export default function ProductsListPage() {
                   </div>
                 ))}
               </div>
-              <Button variant="outline" size="sm" className="mt-4 w-full">
+            <Button asChild variant="outline" size="sm" className="mt-4 w-full">
+              <Link href={`/admin/products/${product.id}`}>
                 <Package className="w-4 h-4 mr-2" />
                 Manage
-              </Button>
+              </Link>
+            </Button>
             </CardContent>
           </Card>
         ))}
