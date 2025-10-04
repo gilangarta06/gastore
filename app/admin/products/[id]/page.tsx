@@ -1,8 +1,8 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,46 +17,74 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Edit, Trash, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const mockProducts = [
-  {
-    id: 1,
-    name: "Netflix Premium",
-    price: 100000,
-    description: "Akses Netflix Premium 1 bulan full HD.",
-    image: "https://via.placeholder.com/300",
-    variants: [
-      {
-        id: 1,
-        name: "1 Bulan",
-        price: 100000,
-        quantity: 3,
-        accounts: [
-          { username: "netflix_1@gmail.com", password: "abc123", sold: true },
-          { username: "netflix_2@gmail.com", password: "xyz456", sold: false },
-          { username: "netflix_3@gmail.com", password: "qwe789", sold: false },
-        ],
-      },
-      {
-        id: 2,
-        name: "3 Bulan",
-        price: 250000,
-        quantity: 2,
-        accounts: [
-          { username: "netflix3_1@gmail.com", password: "111222", sold: true },
-          { username: "netflix3_2@gmail.com", password: "333444", sold: false },
-        ],
-      },
-    ],
-  },
-];
-
 export default function ProductDetailPage() {
   const params = useParams();
-  const productId = Number(params.id);
-  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
+  const router = useRouter();
+  const productId = params.id as string;
 
-  const product = mockProducts.find((p) => p.id === productId);
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+
+  useEffect(() => {
+    async function fetchProduct() {
+      try {
+        const res = await fetch(`/api/products/${productId}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error("Failed to fetch product");
+        const data = await res.json();
+        setProduct(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProduct();
+  }, [productId]);
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure want to delete this product?")) return;
+    try {
+      const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      router.push("/admin/products");
+    } catch (err) {
+      console.error(err);
+      alert("Delete failed");
+    }
+  };
+
+  const handleEdit = async (formData: FormData) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: formData.get("name"),
+          category: formData.get("category"),
+          description: formData.get("description"),
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Update failed");
+      const updated = await res.json();
+      setProduct(updated);
+      setEditOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Update failed");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -82,7 +110,7 @@ export default function ProductDetailPage() {
           <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Edit className="w-4 h-4 mr-2" /> Edit
           </Button>
-          <Button variant="destructive">
+          <Button variant="destructive" onClick={handleDelete}>
             <Trash className="w-4 h-4 mr-2" /> Delete
           </Button>
         </div>
@@ -96,13 +124,13 @@ export default function ProductDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <img
-              src={product.image}
+              src={product.image || "https://via.placeholder.com/300"}
               alt={product.name}
               className="w-full h-64 object-cover rounded-lg border"
             />
             <p className="text-muted-foreground">{product.description}</p>
-            <p className="text-xl font-bold text-primary">
-              Rp {product.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+            <p className="text-sm text-muted-foreground">
+              Kategori: <span className="font-medium">{product.category}</span>
             </p>
           </CardContent>
         </Card>
@@ -113,9 +141,9 @@ export default function ProductDetailPage() {
             <CardTitle>Variants</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {product.variants.map((v) => (
+            {product.variants?.map((v: any, idx: number) => (
               <div
-                key={v.id}
+                key={idx}
                 className="border rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-muted/50 transition"
                 onClick={() => setSelectedVariant(v)}
               >
@@ -129,7 +157,7 @@ export default function ProductDetailPage() {
                   </p>
                 </div>
                 <p className="font-semibold text-primary">
-                  Rp {v.price.toLocaleString()}
+                  Rp {v.price?.toLocaleString()}
                 </p>
               </div>
             ))}
@@ -146,23 +174,23 @@ export default function ProductDetailPage() {
               Ubah informasi produk di bawah dan klik simpan.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <form action={handleEdit} className="space-y-4">
             <div>
               <Label>Nama Produk</Label>
-              <Input defaultValue={product.name} />
+              <Input name="name" defaultValue={product.name} />
             </div>
             <div>
-              <Label>Harga</Label>
-              <Input type="number" defaultValue={product.price} />
+              <Label>Kategori</Label>
+              <Input name="category" defaultValue={product.category || ""} />
             </div>
             <div>
               <Label>Deskripsi</Label>
-              <Input defaultValue={product.description} />
+              <Input name="description" defaultValue={product.description} />
             </div>
             <div className="flex justify-end pt-2">
-              <Button>Simpan</Button>
+              <Button type="submit">Simpan</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -184,13 +212,13 @@ export default function ProductDetailPage() {
               <div>
                 <p className="font-semibold">{selectedVariant.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  Harga: Rp {selectedVariant.price.toLocaleString()} <br />
+                  Harga: Rp {selectedVariant.price?.toLocaleString()} <br />
                   Jumlah akun: {selectedVariant.quantity}
                 </p>
               </div>
 
               <div className="space-y-2 max-h-60 overflow-y-auto border-t pt-3">
-                {selectedVariant.accounts.map((acc: any, i: number) => (
+                {selectedVariant.accounts?.map((acc: any, i: number) => (
                   <div
                     key={i}
                     className="flex justify-between items-center border rounded-md p-2"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Dialog,
@@ -11,19 +11,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+interface Account {
+  username: string;
+  password: string;
+}
+
 interface Variant {
   name: string;
-  price: string;
-  stock: string;
-  shipping: string;
+  price: number;
+  accounts: Account[];
+}
+
+interface Product {
+  name: string;
+  image: string;
+  description?: string;
+  variants: Variant[];
 }
 
 interface ProductDetailProps {
   open: boolean;
   onClose: () => void;
+  product: Product; // tambahkan product dari parent
 }
 
-export default function ProductDetailModal({ open, onClose }: ProductDetailProps) {
+export default function ProductDetailModal({ open, onClose, product }: ProductDetailProps) {
   const [search, setSearch] = useState("");
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
 
@@ -34,26 +46,21 @@ export default function ProductDetailModal({ open, onClose }: ProductDetailProps
     phone: "",
   });
 
-  const variants: Variant[] = [
-    { name: "Variant Name 1", price: "Rp. 10.000", stock: "Stok habis", shipping: "Pengiriman INSTANT" },
-    { name: "Variant Name 2", price: "Rp. 10.000", stock: "Tersedia", shipping: "Pengiriman MANUAL" },
-    { name: "Variant Name 3", price: "Rp. 10.000", stock: "Tersisa 9", shipping: "Pengiriman INSTANT" },
-  ];
-
-  const filtered = variants.filter((v) =>
+  const filteredVariants = product.variants.filter((v) =>
     v.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const getStockClass = (stock: string) => {
-    if (stock.toLowerCase().includes("habis")) return "text-red-500 font-semibold";
-    if (stock.toLowerCase().includes("tersedia")) return "text-green-500 font-semibold";
-    return "text-yellow-500 font-semibold";
+  const getStockText = (variant: Variant) => {
+    const qty = variant.accounts.length;
+    if (qty === 0) return "Stok habis";
+    if (qty <= 5) return `Tersisa ${qty}`;
+    return "Tersedia";
   };
 
-  const getShippingClass = (shipping: string) => {
-    if (shipping.toLowerCase().includes("instant"))
-      return "bg-green-200 text-green-800 dark:bg-green-900/40 dark:text-green-300";
-    return "bg-blue-200 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
+  const getStockClass = (stockText: string) => {
+    if (stockText.toLowerCase().includes("habis")) return "text-red-500 font-semibold";
+    if (stockText.toLowerCase().includes("tersedia")) return "text-green-500 font-semibold";
+    return "text-yellow-500 font-semibold";
   };
 
   const handleSubmit = () => {
@@ -66,7 +73,7 @@ export default function ProductDetailModal({ open, onClose }: ProductDetailProps
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl rounded-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">🎁 Product Title</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">🎁 {product.name}</DialogTitle>
         </DialogHeader>
 
         <div className="overflow-y-auto pr-2 space-y-6">
@@ -74,17 +81,16 @@ export default function ProductDetailModal({ open, onClose }: ProductDetailProps
           <div className="flex flex-col md:flex-row gap-6">
             <div className="relative aspect-square w-full md:w-1/3 rounded-xl overflow-hidden border">
               <Image
-                src="https://via.placeholder.com/400"
-                alt="Product"
+                src={product.image || "/fallback-product.png"}
+                alt={product.name}
                 fill
-                unoptimized
                 className="object-cover"
+                unoptimized
               />
             </div>
             <div className="flex-1 flex items-center">
               <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                Pilih variant produk dulu yuk!  
-                Ini adalah deskripsi produk yang menjelaskan fitur dan keuntungan utama.
+                {product.description || "Deskripsi produk tidak tersedia."}
               </p>
             </div>
           </div>
@@ -99,7 +105,7 @@ export default function ProductDetailModal({ open, onClose }: ProductDetailProps
               />
 
               <div className="space-y-4">
-                {filtered.map((v, i) => (
+                {filteredVariants.map((v, i) => (
                   <div
                     key={i}
                     className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg flex items-center justify-between border hover:shadow transition cursor-pointer"
@@ -107,15 +113,16 @@ export default function ProductDetailModal({ open, onClose }: ProductDetailProps
                   >
                     <div>
                       <p className="font-bold">{v.name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{v.price}</p>
-                      <span className={`text-sm ${getStockClass(v.stock)}`}>{v.stock}</span>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Rp {v.price.toLocaleString()}
+                      </p>
+                      <span className={`text-sm ${getStockClass(getStockText(v))}`}>
+                        {getStockText(v)}
+                      </span>
                     </div>
-                    <span className={`text-xs sm:text-sm px-3 py-1.5 rounded-full font-medium ${getShippingClass(v.shipping)}`}>
-                      {v.shipping}
-                    </span>
                   </div>
                 ))}
-                {filtered.length === 0 && (
+                {filteredVariants.length === 0 && (
                   <p className="text-center text-gray-500 dark:text-gray-400 py-6">🚫 Variant tidak ditemukan.</p>
                 )}
               </div>
@@ -127,7 +134,7 @@ export default function ProductDetailModal({ open, onClose }: ProductDetailProps
             <div className="space-y-4">
               <div className="p-4 border rounded-lg bg-gray-100 dark:bg-gray-800/40">
                 <p className="font-bold">Variant dipilih:</p>
-                <p>{selectedVariant.name} — {selectedVariant.price}</p>
+                <p>{selectedVariant.name} — Rp {selectedVariant.price.toLocaleString()}</p>
               </div>
 
               <Input

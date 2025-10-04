@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -21,74 +21,37 @@ import {
 } from "@/components/ui/dialog";
 
 type Order = {
-  id: number;
-  customer: string;
-  email: string;
+  _id: string;
+  customerName: string;
   phone: string;
-  product: string;
-  variant: string;
-  price: string;
-  status: "waiting" | "cancelled" | "in-process" | "completed";
+  productId: { name: string }; // karena pakai populate
+  variant: { name: string; price: number };
+  qty: number;
+  status: "pending" | "cancelled" | "in-process" | "completed";
 };
-
-const orders: Order[] = [
-  {
-    id: 1,
-    customer: "Sophia Clark",
-    email: "sophia@email.com",
-    phone: "+62 812-3456-7890",
-    product: "T-Shirt",
-    variant: "Medium",
-    price: "$25.00",
-    status: "waiting",
-  },
-  {
-    id: 2,
-    customer: "Ethan Miller",
-    email: "ethan@email.com",
-    phone: "+62 813-2222-1111",
-    product: "Hoodie",
-    variant: "Large",
-    price: "$45.00",
-    status: "cancelled",
-  },
-  {
-    id: 3,
-    customer: "Olivia Davis",
-    email: "olivia@email.com",
-    phone: "+62 822-9876-5432",
-    product: "Sweatpants",
-    variant: "Small",
-    price: "$35.00",
-    status: "in-process",
-  },
-  {
-    id: 4,
-    customer: "Liam Wilson",
-    email: "liam@email.com",
-    phone: "+62 899-4444-5555",
-    product: "Jacket",
-    variant: "X-Large",
-    price: "$60.00",
-    status: "completed",
-  },
-  {
-    id: 5,
-    customer: "Ava Martinez",
-    email: "ava@email.com",
-    phone: "+62 877-3333-6666",
-    product: "Shorts",
-    variant: "Medium",
-    price: "$20.00",
-    status: "completed",
-  },
-];
 
 export default function OrdersTable() {
   const [filter, setFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderList, setOrderList] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [orderList, setOrderList] = useState<Order[]>(orders);
+  // Fetch orders dari API
+  useEffect(() => {
+    async function fetchOrders() {
+      try {
+        const res = await fetch("/api/orders", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to fetch orders");
+        const data = await res.json();
+        setOrderList(data);
+      } catch (err) {
+        console.error("Fetch orders error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchOrders();
+  }, []);
 
   const filteredOrders = orderList.filter((order) => {
     if (filter === "all") return true;
@@ -96,20 +59,32 @@ export default function OrdersTable() {
   });
 
   const statusVariants: Record<Order["status"], string> = {
-    waiting: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+    pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
     cancelled: "bg-red-100 text-red-800 hover:bg-red-200",
     "in-process": "bg-blue-100 text-blue-800 hover:bg-blue-200",
     completed: "bg-green-100 text-green-800 hover:bg-green-200",
   };
 
-  function updateStatus(orderId: number, newStatus: Order["status"]) {
-    setOrderList((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
-    setSelectedOrder((prev) =>
-      prev ? { ...prev, status: newStatus } : prev
-    );
+  async function updateStatus(orderId: string, newStatus: Order["status"]) {
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update order");
+      const updated = await res.json();
+
+      setOrderList((prev) =>
+        prev.map((o) => (o._id === orderId ? updated : o))
+      );
+      setSelectedOrder(updated);
+    } catch (err) {
+      console.error("Update status error:", err);
+    }
   }
+
+  if (loading) return <p className="p-6">Loading orders...</p>;
 
   return (
     <div className="w-full space-y-6">
@@ -121,7 +96,7 @@ export default function OrdersTable() {
       >
         <TabsList>
           <TabsTrigger value="all">All Orders</TabsTrigger>
-          <TabsTrigger value="waiting">Waiting</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="in-process">In Process</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
           <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
@@ -135,6 +110,7 @@ export default function OrdersTable() {
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Product</TableHead>
+              <TableHead>Qty</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right"></TableHead>
@@ -142,20 +118,23 @@ export default function OrdersTable() {
           </TableHeader>
           <TableBody>
             {filteredOrders.map((order) => (
-              <TableRow key={order.id}>
+              <TableRow key={order._id}>
                 <TableCell>
-                  <div className="font-medium">{order.customer}</div>
+                  <div className="font-medium">{order.customerName}</div>
                   <div className="text-sm text-muted-foreground">
-                    {order.email}
+                    {order.phone}
                   </div>
                 </TableCell>
                 <TableCell>
-                  {order.product}{" "}
+                  {order.productId?.name}{" "}
                   <span className="text-sm text-muted-foreground">
-                    ({order.variant})
+                    ({order.variant?.name})
                   </span>
                 </TableCell>
-                <TableCell>{order.price}</TableCell>
+                <TableCell>{order.qty}</TableCell>
+                <TableCell>
+                  Rp {(order.variant?.price * order.qty).toLocaleString()}
+                </TableCell>
                 <TableCell>
                   <Badge className={statusVariants[order.status]}>
                     {order.status === "in-process"
@@ -194,20 +173,21 @@ export default function OrdersTable() {
           {selectedOrder && (
             <div className="space-y-3 text-sm">
               <p>
-                <strong>Customer:</strong> {selectedOrder.customer}
-              </p>
-              <p>
-                <strong>Email:</strong> {selectedOrder.email}
+                <strong>Customer:</strong> {selectedOrder.customerName}
               </p>
               <p>
                 <strong>Phone:</strong> {selectedOrder.phone}
               </p>
               <p>
-                <strong>Product:</strong> {selectedOrder.product} (
-                {selectedOrder.variant})
+                <strong>Product:</strong> {selectedOrder.productId?.name} (
+                {selectedOrder.variant?.name})
               </p>
               <p>
-                <strong>Price:</strong> {selectedOrder.price}
+                <strong>Qty:</strong> {selectedOrder.qty}
+              </p>
+              <p>
+                <strong>Total:</strong> Rp{" "}
+                {(selectedOrder.variant?.price * selectedOrder.qty).toLocaleString()}
               </p>
               <p>
                 <strong>Status:</strong>{" "}
@@ -221,7 +201,7 @@ export default function OrdersTable() {
                 <Button
                   size="sm"
                   onClick={() =>
-                    updateStatus(selectedOrder.id, "in-process")
+                    updateStatus(selectedOrder._id, "in-process")
                   }
                 >
                   Set In Process
@@ -229,7 +209,7 @@ export default function OrdersTable() {
                 <Button
                   size="sm"
                   onClick={() =>
-                    updateStatus(selectedOrder.id, "completed")
+                    updateStatus(selectedOrder._id, "completed")
                   }
                   variant="success"
                 >
@@ -238,7 +218,7 @@ export default function OrdersTable() {
                 <Button
                   size="sm"
                   onClick={() =>
-                    updateStatus(selectedOrder.id, "cancelled")
+                    updateStatus(selectedOrder._id, "cancelled")
                   }
                   variant="destructive"
                 >

@@ -5,15 +5,27 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Save, Image } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Account = { username: string; password: string };
 
 type Variant = {
   name: string;
   price: number;
   quantity: number;
-  accounts: { username: string; password: string }[];
+  accounts: Account[];
 };
 
 export default function ProductsPage() {
+  const router = useRouter();
+
+  // State untuk product info
+  const [name, setName] = useState("");
+  const [image, setImage] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+
+  // State untuk variants
   const [variants, setVariants] = useState<Variant[]>([
     { name: "", price: 0, quantity: 0, accounts: [] },
   ]);
@@ -29,7 +41,6 @@ export default function ProductsPage() {
     const updated = [...variants];
     (updated[i] as any)[field] = value;
 
-    // kalau field quantity diubah, generate form akun
     if (field === "quantity") {
       const qty = Number(value) || 0;
       updated[i].accounts = Array.from({ length: qty }, (_, idx) => {
@@ -51,12 +62,39 @@ export default function ProductsPage() {
     setVariants(updated);
   };
 
+  // 🚀 Simpan ke database
+  const handleSave = async () => {
+    const product = {
+      name,
+      image,
+      description,
+      category,
+      variants,
+    };
+
+    console.log("Saving product:", product);
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(product),
+      });
+
+      if (!res.ok) throw new Error("Failed to save product");
+      router.push("/admin/products");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save product");
+    }
+  };
+
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold">Add Product</h2>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" onClick={handleSave}>
           <Save className="w-4 h-4" />
           Save Product
         </Button>
@@ -71,15 +109,37 @@ export default function ProductsPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Product Name</label>
-                <Input placeholder="e.g. Netflix Premium" />
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Netflix Premium"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Category</label>
+                <Input
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="e.g. Streaming, Game, Software"
+                />
               </div>
               <div>
                 <label className="text-sm font-medium">Product Image URL</label>
-                <Input type="url" placeholder="https://example.com/image.png" />
+                <Input
+                  type="url"
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  placeholder="https://example.com/image.png"
+                />
               </div>
               <div>
                 <label className="text-sm font-medium">Description</label>
-                <Textarea rows={4} placeholder="Describe the product..." />
+                <Textarea
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe the product..."
+                />
               </div>
             </div>
           </div>
@@ -122,7 +182,7 @@ export default function ProductsPage() {
                         type="number"
                         value={variant.price}
                         onChange={(e) =>
-                          handleVariantChange(i, "price", e.target.value)
+                          handleVariantChange(i, "price", Number(e.target.value))
                         }
                         placeholder="100000"
                       />
@@ -133,14 +193,18 @@ export default function ProductsPage() {
                         type="number"
                         value={variant.quantity}
                         onChange={(e) =>
-                          handleVariantChange(i, "quantity", e.target.value)
+                          handleVariantChange(
+                            i,
+                            "quantity",
+                            Number(e.target.value)
+                          )
                         }
                         placeholder="3"
                       />
                     </div>
                   </div>
 
-                  {/* Accounts form (auto-generate sesuai quantity) */}
+                  {/* Accounts form */}
                   {variant.accounts.length > 0 && (
                     <div className="space-y-4">
                       <h4 className="font-medium text-sm">
@@ -189,14 +253,32 @@ export default function ProductsPage() {
         <div className="space-y-6">
           <div className="bg-card p-6 rounded-xl shadow-sm">
             <h3 className="text-lg font-bold mb-4">Preview</h3>
-            <div className="aspect-square bg-muted rounded-lg flex items-center justify-center border-2 border-dashed mb-4">
-              <Image className="w-12 h-12 text-muted-foreground" />
+            <div className="aspect-square bg-muted rounded-lg flex items-center justify-center border-2 border-dashed mb-4 overflow-hidden">
+              {image ? (
+                <img src={image} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <Image className="w-12 h-12 text-muted-foreground" />
+              )}
             </div>
-            <h4 className="font-bold">Netflix Premium</h4>
-            <p className="text-sm text-muted-foreground">
-              Example description product...
+            <h4 className="font-bold">{name || "Product Name"}</h4>
+            <p className="text-xs text-muted-foreground italic">
+              {category || "No Category"}
             </p>
-            <p className="text-lg font-bold mt-2 text-primary">Rp100.000</p>
+            <p className="text-sm text-muted-foreground">
+              {description || "Example description product..."}
+            </p>
+
+            {/* Preview semua variant */}
+            {variants && variants.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {variants.map((v, idx) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span>{v.name || "Variant Name"}</span>
+                    <span>Rp {v.price?.toLocaleString() || 0}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
