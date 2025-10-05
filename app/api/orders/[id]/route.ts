@@ -1,139 +1,122 @@
-// app/api/orders/[id]/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Order } from "@/lib/models/Order";
-import { Product } from "@/lib/models/Product";
-import { sendPaymentReminder } from "@/lib/whatsappPayment";
 
-interface OrderRequest {
-  customerName: string;
-  phone: string;
-  productId: string;
-  variant: { name: string; price: number };
-  qty: number;
-}
-
-export async function GET(
+// ✅ DELETE handler with async params
+export async function DELETE(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> } // ✅ params sekarang Promise
 ) {
   try {
     await connectDB();
 
-    const { params } = context;
-    const id = params.id;
+    // ✅ Await params sebelum mengakses propertinya
+    const { id } = await context.params;
 
     if (!id) {
-      return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
+      return NextResponse.json(
+        { error: "ID order tidak ditemukan" },
+        { status: 400 }
+      );
     }
 
-    const order = await Order.findById(id).populate("productId");
+    const order = await Order.findByIdAndDelete(id);
+    
     if (!order) {
-      return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Order tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { message: "Order berhasil dihapus" },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("❌ Delete order error:", err);
+    return NextResponse.json(
+      { error: "Gagal menghapus order" },
+      { status: 500 }
+    );
+  }
+}
+
+// ✅ GET handler (jika ada)
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "ID order tidak ditemukan" },
+        { status: 400 }
+      );
+    }
+
+    const order = await Order.findById(id)
+      .populate("productId", "name")
+      .populate("userId", "username email");
+
+    if (!order) {
+      return NextResponse.json(
+        { error: "Order tidak ditemukan" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(order, { status: 200 });
   } catch (err) {
-    console.error("Fetch order error:", err);
-    return NextResponse.json({ error: "Gagal mengambil order" }, { status: 500 });
+    console.error("❌ Get order error:", err);
+    return NextResponse.json(
+      { error: "Gagal memuat order" },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(
+// ✅ PATCH/PUT handler (jika ada - untuk update status)
+export async function PATCH(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const { params } = context;
-    const id = params.id;
+    const { id } = await context.params;
+    const body = await req.json();
 
     if (!id) {
-      return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
+      return NextResponse.json(
+        { error: "ID order tidak ditemukan" },
+        { status: 400 }
+      );
     }
 
-    const body: OrderRequest = await req.json();
-    const { customerName, phone, productId, variant, qty } = body;
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { $set: body },
+      { new: true }
+    );
 
-    if (!customerName || !phone || !productId || !variant?.name || !variant?.price || !qty) {
-      return NextResponse.json({ error: "Data pesanan tidak lengkap" }, { status: 400 });
-    }
-
-    const product = await Product.findById(productId);
-    if (!product) {
-      return NextResponse.json({ error: "Produk tidak ditemukan" }, { status: 404 });
-    }
-
-    const targetVariant = product.variants.find(v => v.name === variant.name);
-    if (!targetVariant) {
-      return NextResponse.json({ error: "Variant tidak ditemukan" }, { status: 404 });
-    }
-
-    if (targetVariant.quantity < qty) {
-      return NextResponse.json({ error: "Stok tidak cukup" }, { status: 400 });
-    }
-
-    // Kurangi stok
-    targetVariant.quantity -= qty;
-    await product.save();
-
-    // Generate order ID custom
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const orderId = `INV-${date}-${random}`;
-
-    const newOrder = await Order.create({
-      orderId,
-      customerName,
-      phone,
-      productId,
-      variant,
-      qty,
-      status: "pending",
-      createdAt: new Date(),
-    });
-
-    await sendPaymentReminder({
-      phone,
-      customerName,
-      productName: product.name,
-      variantName: variant.name,
-      qty,
-      price: variant.price,
-      paymentUrl: newOrder.paymentUrl || "",
-      orderId,
-    });
-
-    return NextResponse.json(newOrder, { status: 201 });
-  } catch (err) {
-    console.error("❌ Order creation error:", err);
-    return NextResponse.json({ error: "Gagal membuat order" }, { status: 500 });
-  }
-}
-
-export async function DELETE(
-  req: Request,
-  context: { params: { id: string } }
-) {
-  try {
-    await connectDB();
-
-    const { params } = context;
-    const id = params.id;
-
-    if (!id) {
-      return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
-    }
-
-    const order = await Order.findByIdAndDelete(id);
     if (!order) {
-      return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Order tidak ditemukan" },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ message: "Order berhasil dihapus" }, { status: 200 });
+    return NextResponse.json(order, { status: 200 });
   } catch (err) {
-    console.error("❌ Delete order error:", err);
-    return NextResponse.json({ error: "Gagal menghapus order" }, { status: 500 });
+    console.error("❌ Update order error:", err);
+    return NextResponse.json(
+      { error: "Gagal update order" },
+      { status: 500 }
+    );
   }
 }

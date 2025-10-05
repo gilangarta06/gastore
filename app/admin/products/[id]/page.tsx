@@ -14,8 +14,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Edit, Trash, Package } from "lucide-react";
+import { ArrowLeft, Edit, Trash, Package, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+
+interface Account {
+  username: string;
+  password: string;
+  sold?: boolean;
+}
+
+interface Variant {
+  name: string;
+  price: number;
+  quantity: number;
+  accounts: Account[];
+}
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -25,35 +39,47 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [addVariantOpen, setAddVariantOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
 
-  useEffect(() => {
-    async function fetchProduct() {
-      try {
-        const res = await fetch(`/api/products/${productId}`, {
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error("Failed to fetch product");
-        const data = await res.json();
-        setProduct(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+  // State untuk form tambah variant
+  const [newVariant, setNewVariant] = useState<Variant>({
+    name: "",
+    price: 0,
+    quantity: 0,
+    accounts: [],
+  });
+
+  const fetchProduct = async () => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to fetch product");
+      const data = await res.json();
+      setProduct(data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal memuat produk");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchProduct();
   }, [productId]);
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure want to delete this product?")) return;
+    if (!confirm("Yakin ingin menghapus produk ini?")) return;
     try {
       const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Produk berhasil dihapus");
       router.push("/admin/products");
     } catch (err) {
       console.error(err);
-      alert("Delete failed");
+      toast.error("Gagal menghapus produk");
     }
   };
 
@@ -72,9 +98,84 @@ export default function ProductDetailPage() {
       const updated = await res.json();
       setProduct(updated);
       setEditOpen(false);
+      toast.success("Produk berhasil diperbarui");
     } catch (err) {
       console.error(err);
-      alert("Update failed");
+      toast.error("Gagal memperbarui produk");
+    }
+  };
+
+  // Handle perubahan quantity variant baru
+  const handleQuantityChange = (qty: number) => {
+    setNewVariant({
+      ...newVariant,
+      quantity: qty,
+      accounts: Array.from({ length: qty }, (_, i) => 
+        newVariant.accounts[i] || { username: "", password: "" }
+      ),
+    });
+  };
+
+  // Handle perubahan akun
+  const handleAccountChange = (index: number, field: "username" | "password", value: string) => {
+    const updatedAccounts = [...newVariant.accounts];
+    updatedAccounts[index][field] = value;
+    setNewVariant({ ...newVariant, accounts: updatedAccounts });
+  };
+
+  // Submit tambah variant
+  const handleAddVariant = async () => {
+    // Validasi
+    if (!newVariant.name.trim()) {
+      toast.error("Nama variant wajib diisi");
+      return;
+    }
+    if (newVariant.price <= 0) {
+      toast.error("Harga harus lebih dari 0");
+      return;
+    }
+    if (newVariant.quantity <= 0) {
+      toast.error("Quantity harus lebih dari 0");
+      return;
+    }
+
+    // Cek apakah semua akun sudah diisi
+    const emptyAccounts = newVariant.accounts.filter(
+      acc => !acc.username.trim() || !acc.password.trim()
+    );
+    if (emptyAccounts.length > 0) {
+      toast.error("Semua akun harus diisi (username dan password)");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add_variant",
+          variant: newVariant,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to add variant");
+      
+      toast.success("Variant berhasil ditambahkan");
+      setAddVariantOpen(false);
+      
+      // Reset form
+      setNewVariant({
+        name: "",
+        price: 0,
+        quantity: 0,
+        accounts: [],
+      });
+
+      // Refresh data
+      fetchProduct();
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menambahkan variant");
     }
   };
 
@@ -137,8 +238,11 @@ export default function ProductDetailPage() {
 
         {/* Variants */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Variants</CardTitle>
+            <Button size="sm" onClick={() => setAddVariantOpen(true)}>
+              <Plus className="w-4 h-4 mr-1" /> Add
+            </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {product.variants?.map((v: any, idx: number) => (
@@ -157,7 +261,7 @@ export default function ProductDetailPage() {
                   </p>
                 </div>
                 <p className="font-semibold text-primary">
-                  Rp {v.price?.toLocaleString()}
+                  Rp {v.price?.toLocaleString("id-ID")}
                 </p>
               </div>
             ))}
@@ -194,6 +298,84 @@ export default function ProductDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Popup Tambah Variant */}
+      <Dialog open={addVariantOpen} onOpenChange={setAddVariantOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Variant Baru</DialogTitle>
+            <DialogDescription>
+              Isi informasi variant dan akun-akunnya di bawah.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Form Variant Info */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Nama Variant</Label>
+                <Input
+                  placeholder="e.g. 1 Month"
+                  value={newVariant.name}
+                  onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Harga</Label>
+                <Input
+                  type="number"
+                  placeholder="100000"
+                  value={newVariant.price || ""}
+                  onChange={(e) => setNewVariant({ ...newVariant, price: Number(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label>Jumlah Akun</Label>
+                <Input
+                  type="number"
+                  placeholder="5"
+                  value={newVariant.quantity || ""}
+                  onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            {/* Form Accounts */}
+            {newVariant.accounts.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <Label className="text-base font-semibold">
+                  Akun ({newVariant.accounts.length})
+                </Label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {newVariant.accounts.map((acc, i) => (
+                    <div key={i} className="grid grid-cols-2 gap-2 p-3 bg-muted/30 rounded-lg">
+                      <Input
+                        placeholder={`Username ${i + 1}`}
+                        value={acc.username}
+                        onChange={(e) => handleAccountChange(i, "username", e.target.value)}
+                      />
+                      <Input
+                        placeholder={`Password ${i + 1}`}
+                        value={acc.password}
+                        onChange={(e) => handleAccountChange(i, "password", e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setAddVariantOpen(false)}>
+                Batal
+              </Button>
+              <Button onClick={handleAddVariant}>
+                Simpan Variant
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Popup Variant Detail */}
       <Dialog
         open={!!selectedVariant}
@@ -212,7 +394,7 @@ export default function ProductDetailPage() {
               <div>
                 <p className="font-semibold">{selectedVariant.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  Harga: Rp {selectedVariant.price?.toLocaleString()} <br />
+                  Harga: Rp {selectedVariant.price?.toLocaleString("id-ID")} <br />
                   Jumlah akun: {selectedVariant.quantity}
                 </p>
               </div>

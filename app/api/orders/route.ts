@@ -2,16 +2,19 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Order } from "@/lib/models/Order";
 import { Product } from "@/lib/models/Product";
-import { User } from "@/lib/models/User"; // ✅ pastikan di-import
+import { User } from "@/lib/models/User";
 import { sendPaymentReminder } from "@/lib/whatsappPayment";
 
 export async function GET() {
   try {
     await connectDB();
+    
+    await User.init();
+    await Product.init();
 
     const orders = await Order.find()
       .populate("productId", "name")
-      .populate("userId", "username email"); // ✅ populate userId
+      .populate("userId", "username email");
 
     return NextResponse.json(orders, { status: 200 });
   } catch (err) {
@@ -35,6 +38,24 @@ export async function POST(req: Request) {
 
     const variant = product.variants.find((v: any) => v.name === body.variant);
     if (!variant) return NextResponse.json({ error: "Variant tidak ditemukan" }, { status: 404 });
+
+    // ✅ Cek apakah stok akun tersedia
+    if (!variant.accounts || variant.accounts.length === 0) {
+      return NextResponse.json({ error: "Stok akun habis" }, { status: 400 });
+    }
+
+    // ✅ Ambil 1 akun pertama yang tersedia (FIFO)
+    const selectedAccount = variant.accounts[0];
+
+    // Debug log (opsional, bisa dihapus nanti)
+    console.log("🔍 Selected Account:", selectedAccount);
+
+    // ✅ Hapus akun yang sudah diambil dari variant
+    variant.accounts.shift(); // Hapus akun pertama
+    variant.quantity -= 1; // Kurangi stok
+
+    // ✅ Update product di database
+    await product.save();
 
     const orderId = "ORDER-" + Date.now();
 
@@ -64,19 +85,26 @@ export async function POST(req: Request) {
 
     const snapData = await snapRes.json();
 
+    // ✅ Simpan order dengan akun yang dibeli
     const order = await Order.create({
       customerName: body.customerName,
       phone: body.phone,
       productId: product._id,
       variant: { name: variant.name, price: variant.price },
+      account: selectedAccount, // ✅ Simpan akun yang dibeli
       qty: body.qty,
       total: variant.price * body.qty,
       status: "pending",
       midtransOrderId: orderId,
       paymentUrl: snapData.redirect_url,
-      userId: body.userId || null, // ✅ userId optional
+      userId: body.userId || null,
     });
 
+    // Debug log (opsional)
+    console.log("✅ Order created:", order);
+    console.log("🔐 Account in order:", order.account);
+
+    // ✅ Kirim notifikasi WA dengan info akun
     await sendPaymentReminder({
       phone: body.phone,
       customerName: body.customerName,
@@ -86,6 +114,7 @@ export async function POST(req: Request) {
       price: variant.price,
       paymentUrl: snapData.redirect_url,
       orderId,
+      account: selectedAccount, // ✅ TAMBAHKAN INI
     });
 
     return NextResponse.json(order, { status: 201 });

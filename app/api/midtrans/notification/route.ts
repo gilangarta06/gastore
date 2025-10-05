@@ -69,7 +69,7 @@ export async function POST(req: Request) {
 • Username: ${account.username}
 • Password: ${account.password}
 
-Terima kasih sudah berbelanja di Exlupay 💙
+Terima kasih sudah berbelanja di GA Store 💙
 `;
 
           await sendWhatsApp(order.phone, message);

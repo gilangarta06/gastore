@@ -25,7 +25,7 @@ export async function sendPaymentReminder({
   const message = `
 Halo *${customerName}*! 👋
 
-Terima kasih telah melakukan pemesanan di Exlupay.
+Terima kasih telah melakukan pemesanan di GA Strore.
 Berikut detail pesanan Anda:
 
 🧾 *Order ID:* ${orderId || "-"}
@@ -39,7 +39,7 @@ Berikut detail pesanan Anda:
 Silakan selesaikan pembayaran melalui tautan berikut:
 ${paymentUrl || "-"}
 
-_Terima kasih telah berbelanja di Exlupay 💙_
+_Terima kasih telah berbelanja di GA Store 💙_
 `;
 
   await sendWhatsApp(phone, message);

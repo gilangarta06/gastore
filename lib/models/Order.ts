@@ -5,10 +5,15 @@ const OrderSchema = new Schema(
     customerName: String,
     phone: String,
     productId: { type: Schema.Types.ObjectId, ref: "Product" },
-    userId: { type: Schema.Types.ObjectId, ref: "User" }, // ⬅ penting
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
     variant: {
       name: String,
       price: Number,
+    },
+    // ✅ Tambahkan field untuk menyimpan akun yang dibeli
+    account: {
+      username: { type: String, default: null },
+      password: { type: String, default: null },
     },
     qty: Number,
     total: Number,

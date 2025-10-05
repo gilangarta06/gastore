@@ -11,7 +11,7 @@ export default function Footer() {
           {/* Brand + Social */}
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Exlupay
+              GA Store
             </h2>
             <div className="flex space-x-6 mt-4 text-gray-500 dark:text-gray-400">
               <a
