@@ -5,6 +5,7 @@ const OrderSchema = new Schema(
     customerName: String,
     phone: String,
     productId: { type: Schema.Types.ObjectId, ref: "Product" },
+    userId: { type: Schema.Types.ObjectId, ref: "User" }, // ⬅ penting
     variant: {
       name: String,
       price: Number,
