@@ -11,10 +11,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Edit, Trash, Package, Plus, X, PackagePlus } from "lucide-react";
+import { ArrowLeft, Edit, Trash, Plus, Package2, ShoppingCart, AlertCircle, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -27,6 +27,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Account {
   username: string;
@@ -54,7 +63,6 @@ export default function ProductDetailPage() {
   const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
   const [variantToDelete, setVariantToDelete] = useState<string | null>(null);
 
-  // State untuk form tambah variant
   const [newVariant, setNewVariant] = useState<Variant>({
     name: "",
     price: 0,
@@ -62,7 +70,6 @@ export default function ProductDetailPage() {
     accounts: [],
   });
 
-  // State untuk form tambah stok
   const [additionalStock, setAdditionalStock] = useState({
     quantity: 0,
     accounts: [] as Account[],
@@ -123,7 +130,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Handle perubahan quantity variant baru
   const handleQuantityChange = (qty: number) => {
     setNewVariant({
       ...newVariant,
@@ -134,14 +140,12 @@ export default function ProductDetailPage() {
     });
   };
 
-  // Handle perubahan akun
   const handleAccountChange = (index: number, field: "username" | "password", value: string) => {
     const updatedAccounts = [...newVariant.accounts];
     updatedAccounts[index][field] = value;
     setNewVariant({ ...newVariant, accounts: updatedAccounts });
   };
 
-  // Handle perubahan quantity tambah stok
   const handleAdditionalStockChange = (qty: number) => {
     setAdditionalStock({
       quantity: qty,
@@ -151,14 +155,12 @@ export default function ProductDetailPage() {
     });
   };
 
-  // Handle perubahan akun tambah stok
   const handleAdditionalAccountChange = (index: number, field: "username" | "password", value: string) => {
     const updatedAccounts = [...additionalStock.accounts];
     updatedAccounts[index][field] = value;
     setAdditionalStock({ ...additionalStock, accounts: updatedAccounts });
   };
 
-  // Submit tambah variant
   const handleAddVariant = async () => {
     if (!newVariant.name.trim()) {
       toast.error("Nama variant wajib diisi");
@@ -203,7 +205,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Submit tambah stok
   const handleAddStock = async () => {
     if (!selectedVariant) return;
     
@@ -221,23 +222,14 @@ export default function ProductDetailPage() {
     }
 
     try {
-      // const res = await fetch(`/api/products/${productId}`, {
-      //   method: "PATCH",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     action: "add_stock",
-      //     variantName: selectedVariant.name,
-      //     accounts: additionalStock.accounts,
-      //   }),
-      // });
-        const res = await fetch(`/api/products/${productId}`, {
+      const res = await fetch(`/api/products/${productId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "add_stock",
           variantName: selectedVariant.name,
-          amount: additionalStock.quantity,       // ✅ ini
-          accounts: additionalStock.accounts,     // kalau mau disimpan juga nanti
+          amount: additionalStock.quantity,
+          accounts: additionalStock.accounts,
         }),
       });
 
@@ -254,7 +246,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Delete variant
   const handleDeleteVariant = async (variantName: string) => {
     try {
       const res = await fetch(`/api/products/${productId}`, {
@@ -277,141 +268,238 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Open detail atau add stock
-    const handleVariantClick = (variant: any) => {
-      if (variant.quantity === 0 || variant.quantity < 3) {
-        // Buka modal tambah stok kalau stok habis atau di bawah 3
-        setSelectedVariant(variant);
-        setAddStockOpen(true);
-      } else {
-        // Buka detail
-        setSelectedVariant(variant);
-      }
-    };
+  const handleVariantClick = (variant: any) => {
+    if (variant.quantity === 0 || variant.quantity < 3) {
+      setSelectedVariant(variant);
+      setAddStockOpen(true);
+    } else {
+      setSelectedVariant(variant);
+    }
+  };
+
+  const getStockBadge = (quantity: number) => {
+    if (quantity === 0) {
+      return <Badge variant="destructive" className="gap-1"><AlertCircle className="w-3 h-3" />Habis</Badge>;
+    }
+    if (quantity < 3) {
+      return <Badge variant="outline" className="border-orange-500 text-orange-600 gap-1"><TrendingUp className="w-3 h-3" />Menipis</Badge>;
+    }
+    return <Badge variant="secondary" className="gap-1"><Package2 className="w-3 h-3" />Tersedia</Badge>;
+  };
 
   if (loading) {
     return (
-      <div className="p-6">
-        <p>Loading...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground">Memuat produk...</p>
+        </div>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="p-6">
-        <p className="text-center text-muted-foreground">Product not found.</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center space-y-3">
+            <Package2 className="w-16 h-16 mx-auto text-muted-foreground" />
+            <p className="text-muted-foreground">Produk tidak ditemukan</p>
+            <Button variant="outline" onClick={() => router.push("/admin/products")}>
+              Kembali ke Daftar Produk
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/admin/products">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-4 h-4" />
+    <div className="container mx-auto p-6 space-y-6 max-w-7xl">
+      {/* Header dengan Gradient */}
+      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background rounded-lg border p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/admin/products">
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <ArrowLeft className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Kembali</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Kelola produk dan variant dengan mudah
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setEditOpen(true)} className="gap-2">
+              <Edit className="w-4 h-4" /> Edit Produk
             </Button>
-          </Link>
-          <h2 className="text-2xl font-bold">{product.name}</h2>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setEditOpen(true)}>
-            <Edit className="w-4 h-4 mr-2" /> Edit
-          </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash className="w-4 h-4 mr-2" /> Delete
-          </Button>
+            <Button variant="destructive" onClick={handleDelete} className="gap-2">
+              <Trash className="w-4 h-4" /> Hapus
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Detail Product */}
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Product Details</CardTitle>
+        {/* Product Details */}
+        <Card className="lg:col-span-2 overflow-hidden">
+          <CardHeader className="bg-muted/50">
+            <CardTitle className="flex items-center gap-2">
+              <Package2 className="w-5 h-5" />
+              Informasi Produk
+            </CardTitle>
+            <CardDescription>Detail lengkap tentang produk ini</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <img
-              src={product.image || "https://via.placeholder.com/300"}
-              alt={product.name}
-              className="w-full h-64 object-cover rounded-lg border"
-            />
-            <p className="text-muted-foreground">{product.description}</p>
-            <p className="text-sm text-muted-foreground">
-              Kategori: <span className="font-medium">{product.category}</span>
-            </p>
+          <CardContent className="p-6 space-y-6">
+            <div className="relative group">
+              <img
+                src={product.image || "https://via.placeholder.com/600x400/e2e8f0/64748b?text=No+Image"}
+                alt={product.name}
+                className="w-full h-80 object-cover rounded-lg border shadow-sm transition-transform group-hover:scale-[1.02]"
+              />
+              <div className="absolute top-4 right-4">
+                <Badge className="bg-background/80 backdrop-blur-sm">
+                  {product.category}
+                </Badge>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div>
+                <Label className="text-muted-foreground text-xs uppercase tracking-wide">Deskripsi</Label>
+                <p className="text-sm mt-1 leading-relaxed">{product.description}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wide">Kategori</Label>
+                  <p className="font-semibold mt-1">{product.category}</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wide">Total Variant</Label>
+                  <p className="font-semibold mt-1">{product.variants?.length || 0} Variant</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Variants */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Variants</CardTitle>
-            <Button size="sm" onClick={() => setAddVariantOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" /> Add
-            </Button>
-          </CardHeader>
-            <CardContent className="space-y-3">
-          {product.variants?.map((v: any, idx: number) => (
-            <div
-              key={idx}
-              className="border rounded-lg p-3 hover:bg-muted/50 transition"
-            >
-              {/* ✅ Nama & Harga */}
-              <div
-                className="flex justify-between items-center mb-1 cursor-pointer"
-                onClick={() => handleVariantClick(v)}
-              >
-                <p className="font-semibold text-sm">{v.name}</p>
-                <p className="font-semibold text-primary">
-                  Rp {v.price?.toLocaleString("id-ID")}
-                </p>
+        {/* Variants Card */}
+        <Card className="h-fit">
+          <CardHeader className="bg-gradient-to-br from-primary/10 to-primary/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  Variants
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {product.variants?.length || 0} variant tersedia
+                </CardDescription>
               </div>
-
-              {/* ✅ Info Stok */}
-              <div
-                className="cursor-pointer"
-                onClick={() => handleVariantClick(v)}
-              >
-                <p
-                  className={`text-xs ${
-                    v.quantity === 0
-                      ? "text-red-500 font-medium"
-                      : v.quantity < 3
-                      ? "text-orange-500 font-medium"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {v.quantity === 0
-                    ? "Stok habis - Klik untuk tambah"
-                    : v.quantity < 3
-                    ? `Stok menipis (${v.quantity}) - Klik untuk tambah`
-                    : `${v.quantity} akun tersedia`}
-                </p>
-              </div>
-
-              {/* 🗑 Tombol Hapus */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full mt-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setVariantToDelete(v.name);
-                }}
-              >
-                <Trash className="w-3 h-3 mr-1" /> Hapus Variant
+              <Button size="sm" onClick={() => setAddVariantOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" /> Tambah
               </Button>
             </div>
-          ))}
-        </CardContent>
+          </CardHeader>
+          <CardContent className="p-4">
+            <ScrollArea className="h-[500px] pr-4">
+              <div className="space-y-3">
+                {product.variants?.map((v: any, idx: number) => (
+                  <Card
+                    key={idx}
+                    className="group hover:shadow-md transition-all duration-200 cursor-pointer border-2 hover:border-primary/50"
+                  >
+                    <CardContent className="p-4" onClick={() => handleVariantClick(v)}>
+                      <div className="space-y-3">
+                        {/* Header */}
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-base group-hover:text-primary transition-colors">
+                              {v.name}
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {v.quantity} akun {v.quantity === 0 ? "" : "tersedia"}
+                            </p>
+                          </div>
+                          {getStockBadge(v.quantity)}
+                        </div>
+
+                        <Separator />
+
+                        {/* Price & Stock Info */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Harga</p>
+                            <p className="text-lg font-bold text-primary">
+                              Rp {v.price?.toLocaleString("id-ID")}
+                            </p>
+                          </div>
+                          
+                          {v.quantity === 0 ? (
+                            <Button size="sm" variant="outline" className="gap-1 text-red-600 border-red-200 hover:bg-red-50">
+                              <Plus className="w-3 h-3" /> Tambah Stok
+                            </Button>
+                          ) : v.quantity < 3 ? (
+                            <Button size="sm" variant="outline" className="gap-1 text-orange-600 border-orange-200 hover:bg-orange-50">
+                              <Plus className="w-3 h-3" /> Isi Stok
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </CardContent>
+                    
+                    {/* Delete Button */}
+                    <div className="px-4 pb-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setVariantToDelete(v.name);
+                        }}
+                      >
+                        <Trash className="w-3 h-3 mr-1" /> Hapus Variant
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+
+                {product.variants?.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Package2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Belum ada variant</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-3"
+                      onClick={() => setAddVariantOpen(true)}
+                    >
+                      Tambah Variant Pertama
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
         </Card>
       </div>
 
-      {/* Popup Edit Produk */}
+      {/* Dialog Edit Produk */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -421,28 +509,32 @@ export default function ProductDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <form action={handleEdit} className="space-y-4">
-            <div>
-              <Label>Nama Produk</Label>
-              <Input name="name" defaultValue={product.name} />
+            <div className="space-y-2">
+              <Label htmlFor="name">Nama Produk</Label>
+              <Input id="name" name="name" defaultValue={product.name} />
             </div>
-            <div>
-              <Label>Kategori</Label>
-              <Input name="category" defaultValue={product.category || ""} />
+            <div className="space-y-2">
+              <Label htmlFor="category">Kategori</Label>
+              <Input id="category" name="category" defaultValue={product.category || ""} />
             </div>
-            <div>
-              <Label>Deskripsi</Label>
-              <Input name="description" defaultValue={product.description} />
+            <div className="space-y-2">
+              <Label htmlFor="description">Deskripsi</Label>
+              <Input id="description" name="description" defaultValue={product.description} />
             </div>
-            <div className="flex justify-end pt-2">
-              <Button type="submit">Simpan</Button>
+            <Separator />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                Batal
+              </Button>
+              <Button type="submit">Simpan Perubahan</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Popup Tambah Variant */}
+      {/* Dialog Tambah Variant */}
       <Dialog open={addVariantOpen} onOpenChange={setAddVariantOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Tambah Variant Baru</DialogTitle>
             <DialogDescription>
@@ -450,75 +542,95 @@ export default function ProductDetailPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Nama Variant</Label>
-                <Input
-                  placeholder="e.g. 1 Month"
-                  value={newVariant.name}
-                  onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Harga</Label>
-                <Input
-                  type="number"
-                  placeholder="100000"
-                  value={newVariant.price || ""}
-                  onChange={(e) => setNewVariant({ ...newVariant, price: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label>Jumlah Akun</Label>
-                <Input
-                  type="number"
-                  placeholder="5"
-                  value={newVariant.quantity || ""}
-                  onChange={(e) => handleQuantityChange(Number(e.target.value))}
-                />
-              </div>
-            </div>
-
-            {newVariant.accounts.length > 0 && (
-              <div className="space-y-3 border-t pt-4">
-                <Label className="text-base font-semibold">
-                  Akun ({newVariant.accounts.length})
-                </Label>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {newVariant.accounts.map((acc, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2 p-3 bg-muted/30 rounded-lg">
-                      <Input
-                        placeholder={`Username ${i + 1}`}
-                        value={acc.username}
-                        onChange={(e) => handleAccountChange(i, "username", e.target.value)}
-                      />
-                      <Input
-                        placeholder={`Password ${i + 1}`}
-                        value={acc.password}
-                        onChange={(e) => handleAccountChange(i, "password", e.target.value)}
-                      />
-                    </div>
-                  ))}
+          <ScrollArea className="max-h-[70vh] pr-4">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="variant-name">Nama Variant</Label>
+                  <Input
+                    id="variant-name"
+                    placeholder="e.g. 1 Month"
+                    value={newVariant.name}
+                    onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="variant-price">Harga (Rp)</Label>
+                  <Input
+                    id="variant-price"
+                    type="number"
+                    placeholder="100000"
+                    value={newVariant.price || ""}
+                    onChange={(e) => setNewVariant({ ...newVariant, price: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="variant-quantity">Jumlah Akun</Label>
+                  <Input
+                    id="variant-quantity"
+                    type="number"
+                    placeholder="5"
+                    value={newVariant.quantity || ""}
+                    onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                  />
                 </div>
               </div>
-            )}
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setAddVariantOpen(false)}>
-                Batal
-              </Button>
-              <Button onClick={handleAddVariant}>
-                Simpan Variant
-              </Button>
+              {newVariant.accounts.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">
+                        Data Akun ({newVariant.accounts.length})
+                      </Label>
+                      <Badge variant="secondary">{newVariant.accounts.length} akun</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {newVariant.accounts.map((acc, i) => (
+                        <Card key={i} className="p-3 bg-muted/30">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Username {i + 1}</Label>
+                              <Input
+                                placeholder="username"
+                                value={acc.username}
+                                onChange={(e) => handleAccountChange(i, "username", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Password {i + 1}</Label>
+                              <Input
+                                placeholder="password"
+                                value={acc.password}
+                                onChange={(e) => handleAccountChange(i, "password", e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+          </ScrollArea>
+
+          <Separator />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setAddVariantOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleAddVariant} className="gap-2">
+              <Plus className="w-4 h-4" /> Simpan Variant
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Popup Tambah Stok */}
+      {/* Dialog Tambah Stok */}
       <Dialog open={addStockOpen} onOpenChange={setAddStockOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Tambah Stok - {selectedVariant?.name}</DialogTitle>
             <DialogDescription>
@@ -526,61 +638,79 @@ export default function ProductDetailPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <Label>Jumlah Akun yang Ditambahkan</Label>
-              <Input
-                type="number"
-                placeholder="5"
-                value={additionalStock.quantity || ""}
-                onChange={(e) => handleAdditionalStockChange(Number(e.target.value))}
-              />
-            </div>
-
-            {additionalStock.accounts.length > 0 && (
-              <div className="space-y-3 border-t pt-4">
-                <Label className="text-base font-semibold">
-                  Akun Baru ({additionalStock.accounts.length})
-                </Label>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {additionalStock.accounts.map((acc, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2 p-3 bg-muted/30 rounded-lg">
-                      <Input
-                        placeholder={`Username ${i + 1}`}
-                        value={acc.username}
-                        onChange={(e) => handleAdditionalAccountChange(i, "username", e.target.value)}
-                      />
-                      <Input
-                        placeholder={`Password ${i + 1}`}
-                        value={acc.password}
-                        onChange={(e) => handleAdditionalAccountChange(i, "password", e.target.value)}
-                      />
-                    </div>
-                  ))}
-                </div>
+          <ScrollArea className="max-h-[70vh] pr-4">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="stock-quantity">Jumlah Akun yang Ditambahkan</Label>
+                <Input
+                  id="stock-quantity"
+                  type="number"
+                  placeholder="5"
+                  value={additionalStock.quantity || ""}
+                  onChange={(e) => handleAdditionalStockChange(Number(e.target.value))}
+                />
               </div>
-            )}
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setAddStockOpen(false)}>
-                Batal
-              </Button>
-              <Button onClick={handleAddStock}>
-                Tambah Stok
-              </Button>
+              {additionalStock.accounts.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">
+                        Akun Baru ({additionalStock.accounts.length})
+                      </Label>
+                      <Badge variant="secondary">{additionalStock.accounts.length} akun</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {additionalStock.accounts.map((acc, i) => (
+                        <Card key={i} className="p-3 bg-muted/30">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Username {i + 1}</Label>
+                              <Input
+                                placeholder="username"
+                                value={acc.username}
+                                onChange={(e) => handleAdditionalAccountChange(i, "username", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Password {i + 1}</Label>
+                              <Input
+                                placeholder="password"
+                                value={acc.password}
+                                onChange={(e) => handleAdditionalAccountChange(i, "password", e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+          </ScrollArea>
+
+          <Separator />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setAddStockOpen(false)}>
+              Batal
+            </Button>
+            <Button onClick={handleAddStock} className="gap-2">
+              <Plus className="w-4 h-4" /> Tambah Stok
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Popup Variant Detail (untuk yang ada stok) */}
+      {/* Dialog Detail Variant */}
       <Dialog
         open={!!selectedVariant && !addStockOpen}
         onOpenChange={() => setSelectedVariant(null)}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Detail Variant</DialogTitle>
+            <DialogTitle>Detail Variant - {selectedVariant?.name}</DialogTitle>
             <DialogDescription>
               Informasi akun dan status penjualan untuk varian ini.
             </DialogDescription>
@@ -588,32 +718,45 @@ export default function ProductDetailPage() {
 
           {selectedVariant && (
             <div className="space-y-4">
-              <div>
-                <p className="font-semibold">{selectedVariant.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Harga: Rp {selectedVariant.price?.toLocaleString("id-ID")} <br />
-                  Jumlah akun: {selectedVariant.quantity}
-                </p>
-              </div>
-
-              <div className="space-y-2 max-h-60 overflow-y-auto border-t pt-3">
-                {selectedVariant.accounts?.map((acc: any, i: number) => (
-                  <div
-                    key={i}
-                    className="flex justify-between items-center border rounded-md p-2"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{acc.username}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {acc.password}
-                      </p>
-                    </div>
-                    <Badge variant={acc.sold ? "destructive" : "secondary"}>
-                      {acc.sold ? "Terjual" : "Tersedia"}
-                    </Badge>
+              <Card className="bg-muted/30">
+                <CardContent className="pt-6 grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase">Harga</Label>
+                    <p className="text-2xl font-bold text-primary">
+                      Rp {selectedVariant.price?.toLocaleString("id-ID")}
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase">Total Akun</Label>
+                    <p className="text-2xl font-bold">{selectedVariant.quantity}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Separator />
+
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-2 pr-4">
+                  {selectedVariant.accounts?.map((acc: any, i: number) => (
+                    <Card key={i} className="p-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex justify-between items-center">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">#{i + 1}</Badge>
+                            <p className="font-medium">{acc.username}</p>
+                          </div>
+                          <p className="text-sm text-muted-foreground font-mono">
+                            {acc.password}
+                          </p>
+                        </div>
+                        <Badge variant={acc.sold ? "destructive" : "secondary"} className="gap-1">
+                          {acc.sold ? "Terjual" : "Tersedia"}
+                        </Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
           )}
         </DialogContent>
@@ -623,9 +766,13 @@ export default function ProductDetailPage() {
       <AlertDialog open={!!variantToDelete} onOpenChange={() => setVariantToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Variant?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              Hapus Variant?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Variant <b>{variantToDelete}</b> akan dihapus permanen. Aksi ini tidak dapat dibatalkan.
+              Variant <span className="font-semibold text-foreground">{variantToDelete}</span> akan dihapus permanen. 
+              Semua data akun di variant ini akan hilang dan aksi ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -634,7 +781,8 @@ export default function ProductDetailPage() {
               onClick={() => variantToDelete && handleDeleteVariant(variantToDelete)}
               className="bg-red-600 hover:bg-red-700"
             >
-              Hapus
+              <Trash className="w-4 h-4 mr-2" />
+              Ya, Hapus Variant
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

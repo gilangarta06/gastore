@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import {
   Table,
   TableBody,
@@ -11,7 +11,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Trash2, Eye, Copy, CheckCheck } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  Trash2,
+  Eye,
+  Copy,
+  CheckCheck,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +30,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface Order {
@@ -33,7 +45,7 @@ interface Order {
   phone: string;
   productId: { _id: string; name: string } | string;
   variant: { name: string; price: number };
-  account?: { username: string; password: string }; // ✅ Tambahkan account
+  account?: { username: string; password: string };
   qty: number;
   total: number;
   status: string;
@@ -48,10 +60,8 @@ export default function OrdersTable() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "";
@@ -60,13 +70,8 @@ export default function OrdersTable() {
     try {
       setRefreshing(true);
       setError(null);
-
       const res = await fetch(`${BASE_URL}/api/orders`, { cache: "no-store" });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error("Gagal memuat data");
-      }
-
+      if (!res.ok) throw new Error("Gagal memuat data");
       const data = await res.json();
       setOrders(data);
     } catch (err: any) {
@@ -80,9 +85,10 @@ export default function OrdersTable() {
   const deleteOrder = async (id: string) => {
     try {
       setDeleting(id);
-      const res = await fetch(`${BASE_URL}/api/orders/${id}`, { method: "DELETE" });
+      const res = await fetch(`${BASE_URL}/api/orders/${id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Gagal menghapus pesanan");
-
       toast.success("Pesanan berhasil dihapus");
       await fetchOrders();
     } catch (err: any) {
@@ -92,7 +98,6 @@ export default function OrdersTable() {
     }
   };
 
-  // ✅ Fungsi copy to clipboard
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
@@ -108,7 +113,7 @@ export default function OrdersTable() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-40 text-gray-500">
+      <div className="flex items-center justify-center h-40 text-muted-foreground">
         <Loader2 className="animate-spin mr-2" /> Memuat pesanan...
       </div>
     );
@@ -116,22 +121,34 @@ export default function OrdersTable() {
 
   if (error) {
     return (
-      <div className="text-center text-red-600">
-        {error}
-        <div className="mt-3">
-          <Button onClick={fetchOrders} variant="secondary">Coba Lagi</Button>
-        </div>
+      <div className="text-center space-y-4 py-6">
+        <p className="text-destructive">{error}</p>
+        <Button variant="outline" onClick={fetchOrders}>
+          Coba Lagi
+        </Button>
       </div>
     );
   }
 
   return (
     <>
-      <div className="border rounded-md shadow-sm">
+      <div className="rounded-xl border bg-card shadow-sm">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-semibold">Daftar Pesanan</h2>
-          <Button variant="outline" size="sm" onClick={fetchOrders} disabled={refreshing}>
-            {refreshing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />} Refresh
+          <h2 className="text-lg font-semibold tracking-tight">
+            Daftar Pesanan
+          </h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchOrders}
+            disabled={refreshing}
+          >
+            {refreshing ? (
+              <Loader2 className="animate-spin h-4 w-4 mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Refresh
           </Button>
         </div>
 
@@ -139,51 +156,86 @@ export default function OrdersTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead className="w-[140px]">Order ID</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Aksi</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
-
             <TableBody>
               {orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-gray-500 py-6">Tidak ada pesanan.</TableCell>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground py-6"
+                  >
+                    Tidak ada pesanan.
+                  </TableCell>
                 </TableRow>
               ) : (
                 orders.map((order) => {
-                  const statusColor =
-                    order.status === "completed" ? "default" :
-                    order.status === "pending" ? "secondary" : "outline";
+                  const statusVariant =
+                    order.status === "completed"
+                      ? "default"
+                      : order.status === "pending"
+                      ? "secondary"
+                      : "outline";
 
-                  const displayOrderId = order.midtransOrderId || `INV-${order._id.slice(-6).toUpperCase()}`;
+                  const orderId =
+                    order.midtransOrderId ||
+                    `INV-${order._id.slice(-6).toUpperCase()}`;
 
                   return (
                     <TableRow key={order._id}>
-                      <TableCell className="font-medium">{displayOrderId}</TableCell>
+                      <TableCell className="font-medium">{orderId}</TableCell>
                       <TableCell>{order.customerName}</TableCell>
-                      <TableCell><Badge variant={statusColor}>{order.status}</Badge></TableCell>
-                      <TableCell className="space-x-2">
-                        <Button size="icon" variant="outline" onClick={() => { setSelectedOrder(order); setIsDetailOpen(true); }}>
+                      <TableCell>
+                        <Badge variant={statusVariant}>{order.status}</Badge>
+                      </TableCell>
+                      <TableCell className="flex justify-end gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setIsDetailOpen(true);
+                          }}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="icon" disabled={deleting === order._id}>
-                              {deleting === order._id ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              disabled={deleting === order._id}
+                            >
+                              {deleting === order._id ? (
+                                <Loader2 className="animate-spin h-4 w-4" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Hapus Pesanan?</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Hapus Pesanan?
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                Pesanan <b>{displayOrderId}</b> milik <b>{order.customerName}</b> akan dihapus permanen.
+                                Pesanan{" "}
+                                <b>{orderId}</b> milik{" "}
+                                <b>{order.customerName}</b> akan dihapus
+                                permanen.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Batal</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteOrder(order._id)} className="bg-red-600 hover:bg-red-700">Hapus</AlertDialogAction>
+                              <AlertDialogAction
+                                onClick={() => deleteOrder(order._id)}
+                              >
+                                Hapus
+                              </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -197,115 +249,106 @@ export default function OrdersTable() {
         </div>
       </div>
 
-      {/* Detail Modal with Account Info */}
+      {/* Dialog Detail */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Detail Pesanan</DialogTitle>
           </DialogHeader>
           {selectedOrder && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm mt-2">
               <div className="grid grid-cols-2 gap-2">
-                <span className="font-medium">Order ID:</span>
-                <span>{selectedOrder.midtransOrderId || `INV-${selectedOrder._id.slice(-6).toUpperCase()}`}</span>
-
-                <span className="font-medium">Customer:</span>
-                <span>{selectedOrder.customerName}</span>
-
-                <span className="font-medium">Phone:</span>
-                <span>{selectedOrder.phone}</span>
-
-                <span className="font-medium">Product:</span>
-                <span>
-                  {selectedOrder.productId && typeof selectedOrder.productId === "object"
-                  ? selectedOrder.productId.name
-                  : selectedOrder.productId || "Unknown Product"}
-                </span>
-
-                <span className="font-medium">Variant:</span>
-                <span>{selectedOrder.variant?.name}</span>
-
-                <span className="font-medium">Qty:</span>
-                <span>{selectedOrder.qty}</span>
-
-                <span className="font-medium">Price:</span>
-                <span>Rp {selectedOrder.variant?.price.toLocaleString("id-ID")}</span>
-
-                <span className="font-medium">Total:</span>
-                <span className="font-semibold text-green-600">Rp {selectedOrder.total?.toLocaleString("id-ID")}</span>
-
-                <span className="font-medium">Status:</span>
-                <Badge variant={selectedOrder.status === "completed" ? "default" : "secondary"}>
-                  {selectedOrder.status}
-                </Badge>
-
-                <span className="font-medium">Dibuat:</span>
-                <span>{new Date(selectedOrder.createdAt).toLocaleString("id-ID")}</span>
-
-                <span className="font-medium">User:</span>
-                <span>{selectedOrder.userId ? `${selectedOrder.userId.username}` : "-"}</span>
+                {[
+                  ["Order ID", selectedOrder.midtransOrderId || `INV-${selectedOrder._id.slice(-6).toUpperCase()}`],
+                  ["Customer", selectedOrder.customerName],
+                  ["Phone", selectedOrder.phone],
+                  [
+                    "Product",
+                    typeof selectedOrder.productId === "object"
+                      ? selectedOrder.productId?.name || "Unknown Product"
+                      : selectedOrder.productId || "Unknown Product",
+                  ],
+                  ["Variant", selectedOrder.variant?.name],
+                  ["Qty", selectedOrder.qty],
+                  ["Price", `Rp ${selectedOrder.variant?.price.toLocaleString("id-ID")}`],
+                  ["Total", `Rp ${selectedOrder.total?.toLocaleString("id-ID")}`],
+                  ["Status", selectedOrder.status],
+                  [
+                    "Dibuat",
+                    new Date(selectedOrder.createdAt).toLocaleString("id-ID"),
+                  ],
+                  [
+                    "User",
+                    selectedOrder.userId?.username || "-",
+                  ],
+                ].map(([label, value]) => (
+                  <Fragment key={label}>
+                    <span className="font-medium">{label}:</span>
+                    <span
+                      className={
+                        label === "Total"
+                          ? "font-semibold text-green-600"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {value}
+                    </span>
+                  </Fragment>
+                ))}
               </div>
 
-              {/* ✅ Account Section */}
               {selectedOrder.account && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-bold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                  <h4 className="font-semibold mb-2 text-sm">
                     🔐 Account Information
                   </h4>
-                  
-                  <div className="space-y-2">
-                    {/* Username */}
-                    <div className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-gray-900 rounded">
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Username</p>
-                        <p className="font-mono font-medium">{selectedOrder.account.username}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => copyToClipboard(selectedOrder.account!.username, "Username")}
-                      >
-                        {copiedField === "Username" ? (
-                          <CheckCheck className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
 
-                    {/* Password */}
-                    <div className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-gray-900 rounded">
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Password</p>
-                        <p className="font-mono font-medium">{selectedOrder.account.password}</p>
+                  {["username", "password"].map((field) => (
+                    <div
+                      key={field}
+                      className="flex items-center justify-between bg-background border rounded p-2 mb-2"
+                    >
+                      <div>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {field}
+                        </p>
+                        <p className="font-mono font-medium">
+                          {selectedOrder.account?.[field as "username" | "password"]}
+                        </p>
                       </div>
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
-                        onClick={() => copyToClipboard(selectedOrder.account!.password, "Password")}
+                        onClick={() =>
+                          copyToClipboard(
+                            selectedOrder.account?.[field as "username" | "password"]!,
+                            field
+                          )
+                        }
                       >
-                        {copiedField === "Password" ? (
+                        {copiedField === field ? (
                           <CheckCheck className="h-4 w-4 text-green-600" />
                         ) : (
                           <Copy className="h-4 w-4" />
                         )}
                       </Button>
                     </div>
-                  </div>
+                  ))}
                 </div>
               )}
 
-              {/* Payment URL */}
-              <div className="pt-3 border-t">
-                <span className="font-medium">Payment URL: </span>
-                {selectedOrder.paymentUrl ? (
-                  <a href={selectedOrder.paymentUrl} target="_blank" className="text-blue-600 underline">
+              {selectedOrder.paymentUrl && (
+                <div className="pt-3 border-t">
+                  <span className="font-medium">Payment URL: </span>
+                  <a
+                    href={selectedOrder.paymentUrl}
+                    target="_blank"
+                    className="text-blue-600 underline"
+                  >
                     Bayar Sekarang
                   </a>
-                ) : (
-                  <span className="text-gray-400">-</span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
