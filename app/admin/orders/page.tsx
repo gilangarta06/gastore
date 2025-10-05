@@ -216,7 +216,11 @@ export default function OrdersTable() {
                 <span>{selectedOrder.phone}</span>
 
                 <span className="font-medium">Product:</span>
-                <span>{typeof selectedOrder.productId === "object" ? selectedOrder.productId.name : selectedOrder.productId}</span>
+                <span>
+                  {selectedOrder.productId && typeof selectedOrder.productId === "object"
+                  ? selectedOrder.productId.name
+                  : selectedOrder.productId || "Unknown Product"}
+                </span>
 
                 <span className="font-medium">Variant:</span>
                 <span>{selectedOrder.variant?.name}</span>

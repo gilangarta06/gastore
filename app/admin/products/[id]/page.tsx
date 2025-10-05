@@ -14,9 +14,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Edit, Trash, Package, Plus, X } from "lucide-react";
+import { ArrowLeft, Edit, Trash, Package, Plus, X, PackagePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Account {
   username: string;
@@ -40,7 +50,9 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [addVariantOpen, setAddVariantOpen] = useState(false);
+  const [addStockOpen, setAddStockOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+  const [variantToDelete, setVariantToDelete] = useState<string | null>(null);
 
   // State untuk form tambah variant
   const [newVariant, setNewVariant] = useState<Variant>({
@@ -48,6 +60,12 @@ export default function ProductDetailPage() {
     price: 0,
     quantity: 0,
     accounts: [],
+  });
+
+  // State untuk form tambah stok
+  const [additionalStock, setAdditionalStock] = useState({
+    quantity: 0,
+    accounts: [] as Account[],
   });
 
   const fetchProduct = async () => {
@@ -123,9 +141,25 @@ export default function ProductDetailPage() {
     setNewVariant({ ...newVariant, accounts: updatedAccounts });
   };
 
+  // Handle perubahan quantity tambah stok
+  const handleAdditionalStockChange = (qty: number) => {
+    setAdditionalStock({
+      quantity: qty,
+      accounts: Array.from({ length: qty }, (_, i) => 
+        additionalStock.accounts[i] || { username: "", password: "" }
+      ),
+    });
+  };
+
+  // Handle perubahan akun tambah stok
+  const handleAdditionalAccountChange = (index: number, field: "username" | "password", value: string) => {
+    const updatedAccounts = [...additionalStock.accounts];
+    updatedAccounts[index][field] = value;
+    setAdditionalStock({ ...additionalStock, accounts: updatedAccounts });
+  };
+
   // Submit tambah variant
   const handleAddVariant = async () => {
-    // Validasi
     if (!newVariant.name.trim()) {
       toast.error("Nama variant wajib diisi");
       return;
@@ -139,12 +173,11 @@ export default function ProductDetailPage() {
       return;
     }
 
-    // Cek apakah semua akun sudah diisi
     const emptyAccounts = newVariant.accounts.filter(
       acc => !acc.username.trim() || !acc.password.trim()
     );
     if (emptyAccounts.length > 0) {
-      toast.error("Semua akun harus diisi (username dan password)");
+      toast.error("Semua akun harus diisi");
       return;
     }
 
@@ -162,22 +195,99 @@ export default function ProductDetailPage() {
       
       toast.success("Variant berhasil ditambahkan");
       setAddVariantOpen(false);
-      
-      // Reset form
-      setNewVariant({
-        name: "",
-        price: 0,
-        quantity: 0,
-        accounts: [],
-      });
-
-      // Refresh data
+      setNewVariant({ name: "", price: 0, quantity: 0, accounts: [] });
       fetchProduct();
     } catch (err) {
       console.error(err);
       toast.error("Gagal menambahkan variant");
     }
   };
+
+  // Submit tambah stok
+  const handleAddStock = async () => {
+    if (!selectedVariant) return;
+    
+    if (additionalStock.quantity <= 0) {
+      toast.error("Quantity harus lebih dari 0");
+      return;
+    }
+
+    const emptyAccounts = additionalStock.accounts.filter(
+      acc => !acc.username.trim() || !acc.password.trim()
+    );
+    if (emptyAccounts.length > 0) {
+      toast.error("Semua akun harus diisi");
+      return;
+    }
+
+    try {
+      // const res = await fetch(`/api/products/${productId}`, {
+      //   method: "PATCH",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     action: "add_stock",
+      //     variantName: selectedVariant.name,
+      //     accounts: additionalStock.accounts,
+      //   }),
+      // });
+        const res = await fetch(`/api/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add_stock",
+          variantName: selectedVariant.name,
+          amount: additionalStock.quantity,       // ✅ ini
+          accounts: additionalStock.accounts,     // kalau mau disimpan juga nanti
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to add stock");
+      
+      toast.success("Stok berhasil ditambahkan");
+      setAddStockOpen(false);
+      setSelectedVariant(null);
+      setAdditionalStock({ quantity: 0, accounts: [] });
+      fetchProduct();
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menambahkan stok");
+    }
+  };
+
+  // Delete variant
+  const handleDeleteVariant = async (variantName: string) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete_variant",
+          variantName,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to delete variant");
+      
+      toast.success("Variant berhasil dihapus");
+      setVariantToDelete(null);
+      fetchProduct();
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menghapus variant");
+    }
+  };
+
+  // Open detail atau add stock
+    const handleVariantClick = (variant: any) => {
+      if (variant.quantity === 0 || variant.quantity < 3) {
+        // Buka modal tambah stok kalau stok habis atau di bawah 3
+        setSelectedVariant(variant);
+        setAddStockOpen(true);
+      } else {
+        // Buka detail
+        setSelectedVariant(variant);
+      }
+    };
 
   if (loading) {
     return (
@@ -244,28 +354,60 @@ export default function ProductDetailPage() {
               <Plus className="w-4 h-4 mr-1" /> Add
             </Button>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {product.variants?.map((v: any, idx: number) => (
+            <CardContent className="space-y-3">
+          {product.variants?.map((v: any, idx: number) => (
+            <div
+              key={idx}
+              className="border rounded-lg p-3 hover:bg-muted/50 transition"
+            >
+              {/* ✅ Nama & Harga */}
               <div
-                key={idx}
-                className="border rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-muted/50 transition"
-                onClick={() => setSelectedVariant(v)}
+                className="flex justify-between items-center mb-1 cursor-pointer"
+                onClick={() => handleVariantClick(v)}
               >
-                <div>
-                  <p className="font-medium flex items-center gap-2">
-                    <Package className="w-4 h-4" />
-                    {v.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {v.quantity} akun tersedia
-                  </p>
-                </div>
+                <p className="font-semibold text-sm">{v.name}</p>
                 <p className="font-semibold text-primary">
                   Rp {v.price?.toLocaleString("id-ID")}
                 </p>
               </div>
-            ))}
-          </CardContent>
+
+              {/* ✅ Info Stok */}
+              <div
+                className="cursor-pointer"
+                onClick={() => handleVariantClick(v)}
+              >
+                <p
+                  className={`text-xs ${
+                    v.quantity === 0
+                      ? "text-red-500 font-medium"
+                      : v.quantity < 3
+                      ? "text-orange-500 font-medium"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {v.quantity === 0
+                    ? "Stok habis - Klik untuk tambah"
+                    : v.quantity < 3
+                    ? `Stok menipis (${v.quantity}) - Klik untuk tambah`
+                    : `${v.quantity} akun tersedia`}
+                </p>
+              </div>
+
+              {/* 🗑 Tombol Hapus */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full mt-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVariantToDelete(v.name);
+                }}
+              >
+                <Trash className="w-3 h-3 mr-1" /> Hapus Variant
+              </Button>
+            </div>
+          ))}
+        </CardContent>
         </Card>
       </div>
 
@@ -309,7 +451,6 @@ export default function ProductDetailPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Form Variant Info */}
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Nama Variant</Label>
@@ -339,7 +480,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Form Accounts */}
             {newVariant.accounts.length > 0 && (
               <div className="space-y-3 border-t pt-4">
                 <Label className="text-base font-semibold">
@@ -376,9 +516,66 @@ export default function ProductDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Popup Variant Detail */}
+      {/* Popup Tambah Stok */}
+      <Dialog open={addStockOpen} onOpenChange={setAddStockOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Stok - {selectedVariant?.name}</DialogTitle>
+            <DialogDescription>
+              Tambahkan akun baru untuk variant ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Jumlah Akun yang Ditambahkan</Label>
+              <Input
+                type="number"
+                placeholder="5"
+                value={additionalStock.quantity || ""}
+                onChange={(e) => handleAdditionalStockChange(Number(e.target.value))}
+              />
+            </div>
+
+            {additionalStock.accounts.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <Label className="text-base font-semibold">
+                  Akun Baru ({additionalStock.accounts.length})
+                </Label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {additionalStock.accounts.map((acc, i) => (
+                    <div key={i} className="grid grid-cols-2 gap-2 p-3 bg-muted/30 rounded-lg">
+                      <Input
+                        placeholder={`Username ${i + 1}`}
+                        value={acc.username}
+                        onChange={(e) => handleAdditionalAccountChange(i, "username", e.target.value)}
+                      />
+                      <Input
+                        placeholder={`Password ${i + 1}`}
+                        value={acc.password}
+                        onChange={(e) => handleAdditionalAccountChange(i, "password", e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setAddStockOpen(false)}>
+                Batal
+              </Button>
+              <Button onClick={handleAddStock}>
+                Tambah Stok
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Popup Variant Detail (untuk yang ada stok) */}
       <Dialog
-        open={!!selectedVariant}
+        open={!!selectedVariant && !addStockOpen}
         onOpenChange={() => setSelectedVariant(null)}
       >
         <DialogContent className="max-w-lg">
@@ -421,6 +618,27 @@ export default function ProductDetailPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Alert Dialog Delete Variant */}
+      <AlertDialog open={!!variantToDelete} onOpenChange={() => setVariantToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Variant?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Variant <b>{variantToDelete}</b> akan dihapus permanen. Aksi ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => variantToDelete && handleDeleteVariant(variantToDelete)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

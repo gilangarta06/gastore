@@ -1,6 +1,4 @@
-import ReportsChart from "@/components/admin/ReportsChart";
-import ReportsSummary from "@/components/admin/ReportsSummary";
-import ReportsTable from "@/components/admin/ReportsTable";
+import ReportsChart from "@/components/admin/ReportsPage";
 
 export default function ReportsPage() {
   return (
@@ -10,9 +8,7 @@ export default function ReportsPage() {
         <p className="text-muted-foreground">Analisis performa penjualan dan aktivitas pelanggan.</p>
       </div>
 
-      <ReportsSummary />
       <ReportsChart />
-      <ReportsTable />
     </div>
   );
 }
