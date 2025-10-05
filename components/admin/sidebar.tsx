@@ -84,6 +84,19 @@ export function AppSidebar() {
     }));
   };
 
+  // Don't render until mounted to prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <Sidebar>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin Panel</SidebarGroupLabel>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -95,19 +108,25 @@ export function AppSidebar() {
                 const isActive = pathname === item.url;
 
                 if (item.items) {
-                  const isOpen = isMounted ? openMenus[item.title] : false;
+                  const isOpen = openMenus[item.title] || false;
 
                   return (
-                    <SidebarMenuItem key={item.title}>
-                      <Collapsible open={isOpen} onOpenChange={() => toggleMenu(item.title)}>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton>
+                    <SidebarMenuItem key={item.title} suppressHydrationWarning>
+                      <Collapsible 
+                        open={isOpen} 
+                        onOpenChange={() => toggleMenu(item.title)}
+                      >
+                        <CollapsibleTrigger asChild suppressHydrationWarning>
+                          <SidebarMenuButton suppressHydrationWarning>
                             <item.icon />
                             <span>{item.title}</span>
-                            <ChevronRight className="ml-auto transition-transform duration-200 data-[state=open]:rotate-90" />
+                            <ChevronRight 
+                              className="ml-auto transition-transform duration-200" 
+                              style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                            />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
+                        <CollapsibleContent suppressHydrationWarning>
                           <SidebarMenuSub>
                             {item.items.map((subItem) => {
                               const isSubActive = pathname === subItem.url;
@@ -151,10 +170,10 @@ export function AppSidebar() {
       {/* Dark Mode Toggle */}
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem suppressHydrationWarning>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
+              <DropdownMenuTrigger asChild suppressHydrationWarning>
+                <SidebarMenuButton suppressHydrationWarning>
                   <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span>Theme</span>
