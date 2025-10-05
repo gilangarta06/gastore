@@ -42,12 +42,12 @@ interface Category {
 
 /* ------------------- HELPER ------------------- */
 function getValidImageUrl(src?: string) {
-  if (!src) return "/fallback-product.png";
+  if (!src) return "/images/fallback-product.png";
   try {
     new URL(src);
     return src;
   } catch {
-    return "/fallback-product.png";
+    return "/images/fallback-product.png";
   }
 }
 
@@ -56,17 +56,18 @@ interface ProductDetailModalProps {
   open: boolean;
   onClose: () => void;
   product?: Product | null;
+  onOrderSuccess?: () => void;
 }
 
-function ProductDetailModal({ open, onClose, product }: ProductDetailModalProps) {
+function ProductDetailModal({
+  open,
+  onClose,
+  product,
+  onOrderSuccess,
+}: ProductDetailModalProps) {
   const [search, setSearch] = useState("");
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
-
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-  });
+  const [form, setForm] = useState({ name: "", email: "", phone: "" });
 
   const variants = product?.variants || [];
 
@@ -75,7 +76,7 @@ function ProductDetailModal({ open, onClose, product }: ProductDetailModalProps)
   );
 
   const getStockText = (v: Variant) => {
-    const qty = v.accounts.length;
+    const qty = v.quantity || 0;
     if (qty === 0) return "Stok habis";
     if (qty <= 5) return `Tersisa ${qty}`;
     return `Tersedia (${qty})`;
@@ -87,10 +88,35 @@ function ProductDetailModal({ open, onClose, product }: ProductDetailModalProps)
     return "text-yellow-500 font-semibold";
   };
 
-  const handleSubmit = () => {
-    console.log("Pesanan:", { variant: selectedVariant, form });
-    alert(`Pesanan untuk ${form.name} (${form.email}, ${form.phone}) dengan ${selectedVariant?.name} berhasil!`);
-    onClose();
+  const handleSubmit = async () => {
+    if (!selectedVariant || !product) return;
+
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: form.name,
+          phone: form.phone,
+          email: form.email,
+          productId: product._id,
+          variant: selectedVariant.name,
+          qty: 1,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        window.open(data.paymentUrl, "_blank");
+        onClose();
+        onOrderSuccess?.(); // refresh stok otomatis
+      } else {
+        alert("❌ Gagal membuat pesanan: " + data.error);
+      }
+    } catch (err) {
+      console.error("Submit order error:", err);
+      alert("Terjadi kesalahan saat membuat pesanan");
+    }
   };
 
   return (
@@ -132,7 +158,7 @@ function ProductDetailModal({ open, onClose, product }: ProductDetailModalProps)
                   <div
                     key={i}
                     className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg flex items-center justify-between border hover:shadow transition cursor-pointer"
-                    onClick={() => setSelectedVariant(v)}
+                    onClick={() => v.quantity > 0 && setSelectedVariant(v)}
                   >
                     <div>
                       <p className="font-bold">{v.name}</p>
@@ -146,7 +172,9 @@ function ProductDetailModal({ open, onClose, product }: ProductDetailModalProps)
                   </div>
                 ))}
                 {filtered.length === 0 && (
-                  <p className="text-center text-gray-500 dark:text-gray-400 py-6">🚫 Variant tidak ditemukan.</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-6">
+                    🚫 Variant tidak ditemukan.
+                  </p>
                 )}
               </div>
             </>
@@ -157,7 +185,9 @@ function ProductDetailModal({ open, onClose, product }: ProductDetailModalProps)
             <div className="space-y-4">
               <div className="p-4 border rounded-lg bg-gray-100 dark:bg-gray-800/40">
                 <p className="font-bold">Variant dipilih:</p>
-                <p>{selectedVariant.name} — Rp {selectedVariant.price.toLocaleString()}</p>
+                <p>
+                  {selectedVariant.name} — Rp {selectedVariant.price.toLocaleString()}
+                </p>
               </div>
 
               <Input
@@ -201,22 +231,23 @@ export default function ProductGrid() {
   const [categories, setCategories] = useState<Category[]>([{ value: "semua", label: "Semua" }]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch("/api/products", { cache: "no-store" });
-        const data: Product[] = await res.json();
-        setProducts(data);
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("/api/products", { cache: "no-store" });
+      const data: Product[] = await res.json();
+      setProducts(data);
 
-        const uniqueCats = Array.from(new Set(data.map((p) => p.category.toLowerCase())));
-        setCategories([
-          { value: "semua", label: "Semua" },
-          ...uniqueCats.map((c) => ({ value: c, label: c.toUpperCase() })),
-        ]);
-      } catch (err) {
-        console.error("Failed to fetch products:", err);
-      }
-    };
+      const uniqueCats = Array.from(new Set(data.map((p) => p.category.toLowerCase())));
+      setCategories([
+        { value: "semua", label: "Semua" },
+        ...uniqueCats.map((c) => ({ value: c, label: c.toUpperCase() })),
+      ]);
+    } catch (err) {
+      console.error("Failed to fetch products:", err);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
@@ -226,10 +257,8 @@ export default function ProductGrid() {
       : products.filter((p) => p.category.toLowerCase() === filter.toLowerCase());
   }, [filter, products]);
 
-  const isEmpty = filteredProducts.length === 0;
-
   const getStock = (product: Product) =>
-    product.variants.reduce((sum, v) => sum + (v.accounts?.length || 0), 0);
+    product.variants.reduce((sum, v) => sum + (v.quantity || 0), 0);
 
   return (
     <div className="space-y-8 px-4 sm:px-6 lg:px-8">
@@ -258,12 +287,12 @@ export default function ProductGrid() {
 
       {/* Grid Produk */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
-        {isEmpty ? (
+        {filteredProducts.length === 0 ? (
           <div className="col-span-full text-center py-16 text-muted-foreground text-lg font-medium">
             🚫 Tidak ada produk ditemukan dalam kategori ini.
           </div>
         ) : (
-          filteredProducts.map((product, idx) => (
+          filteredProducts.map((product) => (
             <Card
               key={product._id}
               onClick={() => setSelectedProduct(product)}
@@ -271,32 +300,26 @@ export default function ProductGrid() {
                 rounded-2xl overflow-hidden transform hover:-translate-y-1"
             >
               <CardContent className="p-4 flex flex-col items-center text-center">
-                {/* Gambar */}
-                <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 mb-3 aspect-square">
+                <div className="relative w-24 h-24 mb-3">
                   <Image
                     src={getValidImageUrl(product.image)}
                     alt={product.name}
                     fill
                     className="rounded-xl object-cover"
-                    {...(idx === 0 ? { priority: true } : { loading: "lazy" })}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/fallback-product.png";
-                    }}
-                    aria-label={`Gambar ${product.name}`}
+                    onError={(e) =>
+                      ((e.target as HTMLImageElement).src = "/images/fallback-product.png")
+                    }
                   />
                 </div>
 
-                {/* Stok */}
                 <span className="text-xs sm:text-sm px-3 py-1 bg-yellow-500 text-white rounded-full mb-2">
                   Tersisa {getStock(product)}
                 </span>
 
-                {/* Kategori */}
                 <span className="text-xs sm:text-sm text-muted-foreground mb-1 capitalize">
                   {product.category}
                 </span>
 
-                {/* Judul */}
                 <h3 className="text-sm sm:text-base font-semibold leading-tight line-clamp-2">
                   {product.name}
                 </h3>
@@ -306,12 +329,13 @@ export default function ProductGrid() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal Detail */}
       {selectedProduct && (
         <ProductDetailModal
           open={!!selectedProduct}
           onClose={() => setSelectedProduct(null)}
           product={selectedProduct}
+          onOrderSuccess={fetchProducts} // refresh data stok
         />
       )}
     </div>

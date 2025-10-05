@@ -1,7 +1,7 @@
 import SectionHero from "@/components/public/sectionhero";
 import Productlist from "@/components/public/productlist";
 import Faq from "@/components/public/faq"
-import Payment from "@/components/public/payment"
+// import Payment from "@/components/public/payment"
 
 export default function HomePage() {
   return (
@@ -9,7 +9,7 @@ export default function HomePage() {
       <SectionHero />
       <Productlist />
       <Faq />
-      <Payment />
+      {/* <Payment /> */}
     </div>
   );
 }

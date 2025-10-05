@@ -1,37 +1,71 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, Document } from "mongoose";
 
-// SubSchema untuk Account
+// =========================
+// 🧩 SubSchema Account
+// =========================
 const AccountSchema = new Schema({
-  username: String,
-  password: String,
+  username: { type: String, required: true },
+  password: { type: String, required: true },
   sold: { type: Boolean, default: false },
 });
 
-// SubSchema untuk Variant
+// =========================
+// 🧩 SubSchema Variant
+// =========================
 const VariantSchema = new Schema({
-  name: String,
-  price: Number,
-  quantity: Number,
-  accounts: [AccountSchema],
+  name: { type: String, required: true },
+  price: { type: Number, required: true, default: 0 },
+  quantity: { type: Number, required: true, default: 0 },
+  accounts: { type: [AccountSchema], default: [] },
 });
 
-// Main Schema untuk Product
+// =========================
+// 🏪 Main Schema Product
+// =========================
 const ProductSchema = new Schema(
   {
     name: { type: String, required: true },
-    category: { type: String, required: true }, // ✅ pastikan selalu ada
-    price: Number,
-    description: String,
-    image: String,
-    variants: [VariantSchema],
+    category: { type: String, required: true },
+    price: { type: Number, default: 0 },
+    description: { type: String, default: "" },
+    image: { type: String, default: "" },
+    variants: { type: [VariantSchema], default: [] },
   },
   { timestamps: true }
 );
 
-// 🔥 Fix masalah schema cache
-// Jika Product sudah pernah dibuat di `models`, hapus dulu biar schema terbaru kepake
+// =========================
+// 🧠 TypeScript Interface
+// =========================
+export interface IAccount {
+  username: string;
+  password: string;
+  sold: boolean;
+}
+
+export interface IVariant {
+  name: string;
+  price: number;
+  quantity: number;
+  accounts: IAccount[];
+}
+
+export interface IProduct extends Document {
+  name: string;
+  category: string;
+  price: number;
+  description: string;
+  image: string;
+  variants: IVariant[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// =========================
+// 🔥 Fix schema cache
+// =========================
 if (models.Product) {
   delete models.Product;
 }
 
-export const Product = model("Product", ProductSchema);
+export const Product = model<IProduct>("Product", ProductSchema);
