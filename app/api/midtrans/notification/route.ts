@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { Order } from "@/lib/models/Order";
-import { Product } from "@/lib/models/Product";
-import { sendWhatsApp } from "@/lib/whatsapp";
+import { connectDB } from "@/lib/db/mongodb";
+import { Order } from "@/lib/db/models/Order";
+import { Product } from "@/lib/db/models/Product";
+import { sendWhatsApp } from "@/lib/services/whatsapp";
 
 export async function POST(req: Request) {
   try {

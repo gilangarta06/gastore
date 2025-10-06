@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { Review } from "@/lib/models/Review";
-import { Order } from "@/lib/models/Order";
+import { connectDB } from "@/lib/db/mongodb";
+import { Review } from "@/lib/db/models/Review";
+import { Order } from "@/lib/db/models/Order";
 
 // =============================
 // 📌 GET — Ambil reviews berdasarkan productId

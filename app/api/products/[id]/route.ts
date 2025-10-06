@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { Product } from "@/lib/models/Product";
+import { connectDB } from "@/lib/db/mongodb";
+import { Product } from "@/lib/db/models/Product";
 
 // ✅ Helper: ambil ID dari params (karena kadang berupa Promise)
 async function getId(context: { params: Promise<{ id: string }> }) {

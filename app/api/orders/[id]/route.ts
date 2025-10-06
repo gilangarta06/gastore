@@ -1,7 +1,7 @@
 // ✅ /app/api/orders/[id]/route.ts
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { Order } from "@/lib/models/Order";
+import { connectDB } from "@/lib/db/mongodb";
+import { Order } from "@/lib/db/models/Order";
 import { Types } from "mongoose";
 
 // 🔍 Helper untuk cari order by _id atau orderId
