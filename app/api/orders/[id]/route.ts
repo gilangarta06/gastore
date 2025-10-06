@@ -2,23 +2,34 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Order } from "@/lib/models/Order";
+import { Types } from "mongoose";
 
-// ✅ GET order by orderId (ORD-...)
+// 🔍 Helper untuk cari order by _id atau orderId
+async function findOrderById(id: string) {
+  if (Types.ObjectId.isValid(id)) {
+    return await Order.findById(id)
+      .populate("productId", "name")
+      .populate("userId", "username email");
+  } else {
+    return await Order.findOne({ orderId: id })
+      .populate("productId", "name")
+      .populate("userId", "username email");
+  }
+}
+
 export async function GET(
   req: Request,
-  context: { params: Promise<{ id: string }> } // 👈 params wajib Promise
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const { id } = await context.params; // 👈 pakai await
+    const { id } = await context.params;
 
     if (!id) {
       return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
     }
 
-    const order = await Order.findOne({ orderId: id })
-      .populate("productId", "name")
-      .populate("userId", "username email");
+    const order = await findOrderById(id);
 
     if (!order) {
       return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
@@ -31,20 +42,24 @@ export async function GET(
   }
 }
 
-// ✅ DELETE order by orderId
 export async function DELETE(
   req: Request,
-  context: { params: Promise<{ id: string }> } // 👈 sama di sini
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const { id } = await context.params; // 👈 pakai await
+    const { id } = await context.params;
 
     if (!id) {
       return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
     }
 
-    const order = await Order.findOneAndDelete({ orderId: id });
+    let order;
+    if (Types.ObjectId.isValid(id)) {
+      order = await Order.findByIdAndDelete(id);
+    } else {
+      order = await Order.findOneAndDelete({ orderId: id });
+    }
 
     if (!order) {
       return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
@@ -57,21 +72,25 @@ export async function DELETE(
   }
 }
 
-// ✅ PATCH order by orderId
 export async function PATCH(
   req: Request,
-  context: { params: Promise<{ id: string }> } // 👈 dan di sini juga
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const { id } = await context.params; // 👈 pakai await
+    const { id } = await context.params;
     const body = await req.json();
 
     if (!id) {
       return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
     }
 
-    const order = await Order.findOneAndUpdate({ orderId: id }, { $set: body }, { new: true });
+    let order;
+    if (Types.ObjectId.isValid(id)) {
+      order = await Order.findByIdAndUpdate(id, { $set: body }, { new: true });
+    } else {
+      order = await Order.findOneAndUpdate({ orderId: id }, { $set: body }, { new: true });
+    }
 
     if (!order) {
       return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
