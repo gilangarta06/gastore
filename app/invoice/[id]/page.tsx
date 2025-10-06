@@ -1,44 +1,155 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Star } from "lucide-react";
+import { Star, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface Order {
+  _id: string;
+  orderId: string; // ✅ tambahkan
+  customerName: string;
+  email?: string;
+  phone: string;
+  productId: { _id: string; name: string } | string;
+  variant: { name: string; price: number } | string;
+  qty: number;
+  total: number;
+  status: string;
+  createdAt: string;
+  midtransOrderId?: string;
+}
+
 export default function InvoicePage() {
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState<number>(0);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [review, setReview] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
 
-  const handleSubmit = () => {
-    if (!review) return;
-    setSubmitted(true);
-    // kirim ke API ulasan di sini
-    console.log({ rating, review });
+  useEffect(() => {
+    const pathParts = window.location.pathname.split("/");
+    const orderId = pathParts[pathParts.length - 1];
+
+    const fetchOrder = async () => {
+      try {
+        const res = await fetch(`/api/orders/${orderId}`);
+        const data = await res.json();
+
+        setOrder(data);
+
+        // ✅ Pastikan productId ada sebelum ambil review
+        const productId =
+          typeof data.productId === "object" ? data.productId._id : data.productId;
+
+        if (productId) {
+          const reviewRes = await fetch(`/api/reviews?productId=${productId}`);
+          const reviewData = await reviewRes.json();
+
+          // ✅ Pakai order.orderId, bukan _id
+          const alreadyReviewed = reviewData.reviews?.some(
+            (r: any) => r.orderId === data.orderId
+          );
+
+          setHasReviewed(Boolean(alreadyReviewed));
+        }
+      } catch (err) {
+        console.error("Failed to fetch order:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (orderId) fetchOrder();
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!rating || !review.trim() || !order) return;
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.orderId, // ✅ gunakan orderId string (ORD-xxxx)
+          productId:
+            typeof order.productId === "object"
+              ? order.productId._id
+              : order.productId,
+          rating,
+          review,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSubmitted(true);
+        setHasReviewed(true);
+      } else {
+        alert("❌ " + data.error);
+      }
+    } catch (err) {
+      console.error("Submit review error:", err);
+      alert("Terjadi kesalahan saat mengirim review");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Memuat invoice...</p>
+      </div>
+    );
+
+  if (!order)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Invoice tidak ditemukan</p>
+          <Button onClick={() => (window.location.href = "/")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Kembali ke Beranda
+          </Button>
+        </div>
+      </div>
+    );
+
+  const isPaid = order.status === "paid";
+  const productName =
+    typeof order.productId === "object" ? order.productId.name : "Produk";
+  const variantName =
+    typeof order.variant === "object" ? order.variant.name : order.variant;
+  const totalPrice =
+    typeof order.variant === "object"
+      ? order.variant.price * order.qty
+      : order.total;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-2xl shadow-lg">
         <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <svg
-              className="h-8 w-8 text-primary"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10-5-10 5z" />
+            <svg className="h-8 w-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10 5z" />
             </svg>
             <h1 className="text-xl font-bold">Tech Haven</h1>
           </div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold">Invoice</h2>
-            <Badge variant="success">LUNAS</Badge>
+            <Badge variant={isPaid ? "success" : "secondary"}>
+              {isPaid ? "LUNAS" : "PENDING"}
+            </Badge>
           </div>
         </CardHeader>
 
@@ -50,34 +161,25 @@ export default function InvoicePage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nama:</span>
-                  <span>Alex Johnson</span>
+                  <span>{order.customerName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
-                  <span>alex.j@email.com</span>
-                </div>
+                {order.email && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Email:</span>
+                    <span>{order.email}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tanggal:</span>
-                  <span>20 Juli 2024</span>
+                  <span>{new Date(order.createdAt).toLocaleDateString("id-ID")}</span>
                 </div>
               </div>
             </div>
             <div className="text-left md:text-right">
               <h3 className="font-semibold text-lg mb-2">ID Pesanan</h3>
-              <div className="flex items-center justify-start md:justify-end gap-2">
-                <p className="text-sm text-muted-foreground">#20240720-12345</p>
-                <Button variant="ghost" size="icon">
-                  <svg
-                    fill="currentColor"
-                    height="16"
-                    viewBox="0 0 256 256"
-                    width="16"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M200,32H104a8,8,0,0,0,0,16h96V208H104a8,8,0,0,0,0,16h96a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32ZM56,72H152a8,8,0,0,0,0-16H56A16,16,0,0,0,40,72V208a16,16,0,0,0,16,16H152a8,8,0,0,0,0-16H56Z"></path>
-                  </svg>
-                </Button>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                #{order.orderId || order.midtransOrderId || order._id}
+              </p>
             </div>
           </div>
 
@@ -96,72 +198,93 @@ export default function InvoicePage() {
                 </thead>
                 <tbody>
                   <tr className="border-t">
-                    <td className="py-3 px-3">Aplikasi Produktivitas</td>
-                    <td className="py-3 px-3">Premium</td>
-                    <td className="py-3 px-3 text-center">1</td>
-                    <td className="py-3 px-3 text-right">Rp 150.000</td>
+                    <td className="py-3 px-3">{productName}</td>
+                    <td className="py-3 px-3">{variantName}</td>
+                    <td className="py-3 px-3 text-center">{order.qty}</td>
+                    <td className="py-3 px-3 text-right">
+                      Rp {totalPrice.toLocaleString("id-ID")}
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-end mt-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-xl font-bold">Rp 150.000</p>
+          </div>
+
+          {/* Review Section */}
+          {isPaid && (
+            <>
+              <Separator />
+              <div>
+                {hasReviewed || submitted ? (
+                  <div className="text-center py-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+                      <svg
+                        className="w-8 h-8 text-green-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Terima kasih atas ulasanmu!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Review kamu sangat membantu kami untuk menjadi lebih baik.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold mb-2">
+                      Bagaimana pengalaman pembelianmu?
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Bagikan ulasan Anda untuk membantu kami menjadi lebih baik.
+                    </p>
+
+                    <div className="flex items-center gap-1 mb-4">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          onClick={() => setRating(star)}
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          className={cn(
+                            "w-8 h-8 cursor-pointer transition-colors",
+                            star <= (hoverRating || rating)
+                              ? "text-yellow-400 fill-yellow-400"
+                              : "text-muted-foreground"
+                          )}
+                        />
+                      ))}
+                      {rating > 0 && (
+                        <span className="ml-2 text-sm text-muted-foreground">{rating}/5</span>
+                      )}
+                    </div>
+
+                    <Textarea
+                      placeholder="Tulis ulasan singkat tentang produk dan pelayanan kami..."
+                      value={review}
+                      onChange={(e) => setReview(e.target.value)}
+                      className="min-h-[120px]"
+                      disabled={submitting}
+                    />
+
+                    <div className="flex justify-end mt-4">
+                      <Button onClick={handleSubmit} disabled={!rating || !review.trim() || submitting}>
+                        {submitting ? "Mengirim..." : "Kirim Ulasan"}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Ulasan */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">
-              Bagaimana pengalaman pembelianmu?
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Bagikan ulasan Anda untuk membantu kami menjadi lebih baik.
-            </p>
-
-            {/* Rating Bintang */}
-            <div className="flex items-center gap-1 mb-4">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoverRating(star)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  className={cn(
-                    "w-6 h-6 cursor-pointer transition-colors",
-                    star <= (hoverRating || rating)
-                      ? "text-yellow-400 fill-yellow-400"
-                      : "text-muted-foreground"
-                  )}
-                />
-              ))}
-            </div>
-
-            <Textarea
-              placeholder="Tulis ulasan singkat..."
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-              className="min-h-[100px]"
-            />
-
-            <div className="flex justify-end mt-4">
-              <Button onClick={handleSubmit}>Kirim Ulasan</Button>
-            </div>
-          </div>
-
-          {submitted && (
-            <p className="text-center text-green-500 font-medium">
-              Terima kasih atas ulasanmu!
-            </p>
+            </>
           )}
         </CardContent>
 
         <CardFooter className="flex justify-center border-t pt-4">
-          <Button variant="link">Kembali ke Beranda</Button>
+          <Button variant="link" onClick={() => (window.location.href = "/")}>
+            Kembali ke Beranda
+          </Button>
         </CardFooter>
       </Card>
     </div>

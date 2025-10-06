@@ -2,15 +2,16 @@ import { Schema, model, models } from "mongoose";
 
 const OrderSchema = new Schema(
   {
-    customerName: String,
-    phone: String,
-    productId: { type: Schema.Types.ObjectId, ref: "Product" },
+    orderId: { type: String, required: true, unique: true }, // 🆕 ID internal sistem
+    midtransOrderId: { type: String, required: true, unique: true }, // 🛡️ ID ke Midtrans
+    customerName: { type: String, required: true },
+    phone: { type: String, required: true },
+    productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     variant: {
       name: String,
       price: Number,
     },
-    // ✅ Tambahkan field untuk menyimpan akun yang dibeli
     account: {
       username: { type: String, default: null },
       password: { type: String, default: null },
@@ -18,7 +19,6 @@ const OrderSchema = new Schema(
     qty: Number,
     total: Number,
     status: { type: String, default: "pending" },
-    midtransOrderId: String,
     paymentUrl: String,
   },
   { timestamps: true }

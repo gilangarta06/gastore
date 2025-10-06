@@ -1,3 +1,4 @@
+// /app/api/orders/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Order } from "@/lib/models/Order";
@@ -8,7 +9,7 @@ import { sendPaymentReminder } from "@/lib/whatsappPayment";
 export async function GET() {
   try {
     await connectDB();
-    
+
     await User.init();
     await Product.init();
 
@@ -39,26 +40,22 @@ export async function POST(req: Request) {
     const variant = product.variants.find((v: any) => v.name === body.variant);
     if (!variant) return NextResponse.json({ error: "Variant tidak ditemukan" }, { status: 404 });
 
-    // ✅ Cek apakah stok akun tersedia
+    // cek stok akun
     if (!variant.accounts || variant.accounts.length === 0) {
       return NextResponse.json({ error: "Stok akun habis" }, { status: 400 });
     }
 
-    // ✅ Ambil 1 akun pertama yang tersedia (FIFO)
-    const selectedAccount = variant.accounts[0];
+    // ambil akun FIFO
+    const selectedAccount = variant.accounts.shift(); // remove first
+    variant.quantity = (variant.quantity || 0) - 1;
 
-    // Debug log (opsional, bisa dihapus nanti)
-    console.log("🔍 Selected Account:", selectedAccount);
-
-    // ✅ Hapus akun yang sudah diambil dari variant
-    variant.accounts.shift(); // Hapus akun pertama
-    variant.quantity -= 1; // Kurangi stok
-
-    // ✅ Update product di database
+    // update product
     await product.save();
 
-    const orderId = "ORDER-" + Date.now();
+    // generate orderId yang sangat kecil peluang duplikat
+    const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
+    // request Midtrans (sandbox)
     const snapRes = await fetch("https://app.sandbox.midtrans.com/snap/v1/transactions", {
       method: "POST",
       headers: {
@@ -85,26 +82,25 @@ export async function POST(req: Request) {
 
     const snapData = await snapRes.json();
 
-    // ✅ Simpan order dengan akun yang dibeli
+    // simpan order
     const order = await Order.create({
+      orderId,
+      midtransOrderId: orderId,
       customerName: body.customerName,
       phone: body.phone,
       productId: product._id,
       variant: { name: variant.name, price: variant.price },
-      account: selectedAccount, // ✅ Simpan akun yang dibeli
+      account: selectedAccount,
       qty: body.qty,
       total: variant.price * body.qty,
       status: "pending",
-      midtransOrderId: orderId,
       paymentUrl: snapData.redirect_url,
       userId: body.userId || null,
     });
 
-    // Debug log (opsional)
     console.log("✅ Order created:", order);
-    console.log("🔐 Account in order:", order.account);
 
-    // ✅ Kirim notifikasi WA REMINDER (TANPA info akun)
+    // kirim WA reminder
     await sendPaymentReminder({
       phone: body.phone,
       customerName: body.customerName,
@@ -123,16 +119,20 @@ export async function POST(req: Request) {
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+// NOTE: kalau endpoint ini tidak dipakai (karena kamu punya /[id]/route.ts untuk delete),
+// tetap safer kalau jaga delete pakai orderId (bukan ObjectId) supaya tidak ada CastError.
+export async function DELETE(req: Request, { params }: { params: { id?: string } }) {
   try {
     await connectDB();
 
-    const { id } = params;
+    const id = params?.id;
     if (!id) {
       return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
     }
 
-    const order = await Order.findByIdAndDelete(id);
+    // pake orderId lookup (bisa menerima ORD-xxx)
+    const order = await Order.findOneAndDelete({ orderId: id });
+
     if (!order) return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
 
     return NextResponse.json({ message: "Order berhasil dihapus" }, { status: 200 });
