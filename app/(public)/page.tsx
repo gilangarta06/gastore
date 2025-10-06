@@ -1,5 +1,5 @@
 import SectionHero from "@/components/public/sectionhero";
-import Productlist from "@/components/public/productlist";
+import Productgird from "@/components/public/productgird";
 import Faq from "@/components/public/faq"
 // import Payment from "@/components/public/payment"
 
@@ -7,7 +7,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <SectionHero />
-      <Productlist />
+      <Productgird />
       <Faq />
       {/* <Payment /> */}
     </div>

@@ -25,7 +25,7 @@ export async function sendPaymentReminder({
   const message = `
 Halo *${customerName}*! 👋
 
-Terima kasih telah melakukan pemesanan di GA Strore.
+Terima kasih telah melakukan pemesanan di GA Store.
 Berikut detail pesanan Anda:
 
 🧾 *Order ID:* ${orderId || "-"}
@@ -36,10 +36,10 @@ Berikut detail pesanan Anda:
 💰 *Total:* Rp${total.toLocaleString("id-ID")}
 📅 *Tanggal:* ${date}
 
-Silakan selesaikan pembayaran melalui tautan berikut:
+⏰ *Silakan selesaikan pembayaran:*
 ${paymentUrl || "-"}
 
-_Terima kasih telah berbelanja di GA Store 💙_
+_Akun akan dikirim otomatis setelah pembayaran berhasil 💙_
 `;
 
   await sendWhatsApp(phone, message);

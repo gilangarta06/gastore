@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Order } from "@/lib/models/Order";
 import { Product } from "@/lib/models/Product";
-import { sendWhatsApp } from "@/lib/whatsapp"; // ✅ huruf A besar
+import { sendWhatsApp } from "@/lib/whatsapp";
 
 export async function POST(req: Request) {
   try {
@@ -13,72 +13,72 @@ export async function POST(req: Request) {
 
     const { order_id, transaction_status } = body;
 
-    // 🔎 Cari order berdasarkan ID Midtrans
+    // 🔍 Cari order berdasarkan ID Midtrans
     const order = await Order.findOne({ midtransOrderId: order_id }).populate("productId");
     if (!order) {
       console.warn(`⚠️ Order ${order_id} tidak ditemukan`);
       return NextResponse.json({ message: "Order not found" }, { status: 200 });
     }
 
-    // 🔎 Pastikan produk tersedia
-    if (!order.productId) {
-      console.warn(`⚠️ Produk tidak ditemukan di order ${order_id}`);
-      return NextResponse.json({ message: "Product missing in order" }, { status: 200 });
-    }
-
-    const product = await Product.findById(order.productId._id);
+    const product = await Product.findById(order.productId?._id);
     if (!product) {
-      console.warn(`⚠️ Produk ${order.productId._id} tidak ditemukan`);
+      console.warn(`⚠️ Produk ${order.productId?._id} tidak ditemukan`);
       return NextResponse.json({ message: "Product not found" }, { status: 200 });
     }
 
     // 🎯 Handle status Midtrans
-    if (transaction_status === "settlement") {
-      order.status = "completed";
+    if (["settlement", "capture"].includes(transaction_status)) {
+      order.status = "paid";
       await order.save();
 
-      // Cari variant yang sesuai
-      const variant = product.variants.find(
-        (v: any) => v.name === order.variant.name
-      );
+      // ✅ Ambil akun dari order (sudah disimpan saat order dibuat)
+      const account = order.account;
 
-      if (variant) {
-        // Kurangi stok
-        if (typeof variant.quantity === "number" && variant.quantity >= order.qty) {
-          variant.quantity -= order.qty;
-        }
+      if (account && account.username && account.password) {
+        // 💬 Link invoice (public page)
+        const invoiceUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/invoice/${order._id}`;
 
-        // Cari akun yang belum terjual
-        const account = variant.accounts?.find((a: any) => a.sold === false);
+        // 💬 Pesan WhatsApp KONFIRMASI + AKUN
+        const message = `
+🎉 *PEMBAYARAN BERHASIL!* 🎉
 
-        if (account) {
-          account.sold = true;
-          await product.save();
+Halo *${order.customerName}*! 
 
-          // 💬 Kirim pesan WhatsApp berisi akun
-          const message = `
-✅ *Pembayaran Berhasil!*
-━━━━━━━━━━━━━━━
-🧾 *Order ID:* ${order.midtransOrderId || "-"}
+Terima kasih atas pembayaran Anda.
+Berikut detail pesanan dan akun Anda:
+
+━━━━━━━━━━━━━━━━━
+🧾 *Order ID:* ${order.midtransOrderId}
 📦 *Produk:* ${product.name}
-🔖 *Varian:* ${variant.name}
-💰 *Total:* Rp${order.total?.toLocaleString("id-ID") || "0"}
+🔖 *Variant:* ${order.variant.name}
+💰 *Total Dibayar:* Rp${order.total?.toLocaleString("id-ID")}
 📅 *Tanggal:* ${new Date().toLocaleString("id-ID")}
 
-🔐 *Akun Anda:*
-• Username: ${account.username}
-• Password: ${account.password}
+━━━━━━━━━━━━━━━━━
+🔐 *DETAIL AKUN ANDA*
+━━━━━━━━━━━━━━━━━
 
-Terima kasih sudah berbelanja di GA Store 💙
+👤 *Username:* \`${account.username}\`
+🔑 *Password:* \`${account.password}\`
+
+━━━━━━━━━━━━━━━━━
+
+🧾 *Lihat Invoice Anda:*
+${invoiceUrl}
+
+⚠️ *PENTING:*
+- Simpan baik-baik data akun ini
+- Jangan share ke orang lain
+- Segera ganti password setelah login
+
+_Terima kasih telah berbelanja di GA Store! 💙_
+_Butuh bantuan? Hubungi admin kami._
 `;
 
-          await sendWhatsApp(order.phone, message);
-          console.log(`✅ Order ${order_id} sukses: akun dikirim ke ${order.phone}`);
-        } else {
-          console.warn(`⚠️ Tidak ada akun tersedia untuk ${product.name} - ${variant.name}`);
-        }
+        await sendWhatsApp(order.phone, message);
+        console.log(`✅ Order ${order_id} sukses — akun & invoice dikirim ke ${order.phone}`);
       } else {
-        console.warn(`⚠️ Variant ${order.variant.name} tidak ditemukan`);
+        console.warn(`⚠️ Akun tidak tersedia di order ${order_id}`);
       }
     } 
     else if (transaction_status === "pending") {
@@ -86,15 +86,25 @@ Terima kasih sudah berbelanja di GA Store 💙
       await order.save();
       console.log(`⏳ Order ${order_id} masih pending`);
     } 
-    else {
+    else if (["expire", "cancel", "deny"].includes(transaction_status)) {
       order.status = "cancelled";
       await order.save();
+      
+      // ⚠️ Kembalikan akun ke stok jika pembayaran gagal
+      const variant = product.variants.find((v: any) => v.name === order.variant.name);
+      if (variant && order.account) {
+        variant.accounts.unshift(order.account); // Kembalikan akun ke depan array
+        variant.quantity += 1;
+        await product.save();
+        console.log(`♻️ Akun dikembalikan ke stok untuk order ${order_id}`);
+      }
+      
       console.log(`❌ Order ${order_id} dibatalkan`);
     }
 
     return NextResponse.json({ message: "Notification handled" }, { status: 200 });
   } catch (err) {
-    console.error("❌ Midtrans notif error:", err);
+    console.error("❌ Midtrans callback error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

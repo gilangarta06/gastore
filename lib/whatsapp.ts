@@ -2,7 +2,7 @@
 console.log("✅ [DEBUG] whatsapp.ts berhasil dimuat");
 
 export async function sendWhatsApp(to: string, message: string) {
-  console.log("📥 Mencoba kirim ke:", to, "dengan pesan:", message);
+  console.log("📥 Mencoba kirim ke:", to);
 
   try {
     let normalized = to.replace(/\D/g, "");
@@ -25,25 +25,20 @@ export async function sendWhatsApp(to: string, message: string) {
     });
 
     const data = await res.json();
+    console.log("📊 Respons dari wapanels:", data);
 
-    console.log("📊 Respons dari wapanels:", data); // ➡️ Ini kunci!
-
-    // Karena status_code: 200 tapi status false → kita cek secara manual
-    if (res.status !== 200) {
-      console.error("❌ Error HTTP:", res.status, data);
-      throw new Error(`Kesalahan HTTP: ${res.status}`);
+    // ✅ CEK SESUAI FORMAT RESPONSE WAPANELS
+    if (data.message_status === "Success" && data.data?.status_code === 200) {
+      console.log(`✅ Pesan WA berhasil terkirim ke ${normalized}`);
+      return data;
     }
 
-    if (!data.status) {
-      // Ini adalah kasus kritis: wapanels bilang "gagal", tapi HTTP 200
-      console.error("❌ Pesan gagal dikirim menurut wapanels:", data.message || "Tidak ada pesan error");
-      throw new Error(data.message || "Gagal mengirim pesan melalui panel");
-    }
+    // Jika gagal
+    console.error("❌ Pesan gagal:", data);
+    throw new Error(data.message || "Gagal mengirim pesan");
 
-    console.log(`✅ Pesan WA terkirim ke ${normalized}`);
-    return data;
   } catch (err: any) {
     console.error("❌ sendWhatsApp error:", err.message || err);
-    return null;
+    throw err;
   }
 }

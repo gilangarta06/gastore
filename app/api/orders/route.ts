@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     console.log("✅ Order created:", order);
     console.log("🔐 Account in order:", order.account);
 
-    // ✅ Kirim notifikasi WA dengan info akun
+    // ✅ Kirim notifikasi WA REMINDER (TANPA info akun)
     await sendPaymentReminder({
       phone: body.phone,
       customerName: body.customerName,
@@ -114,7 +114,6 @@ export async function POST(req: Request) {
       price: variant.price,
       paymentUrl: snapData.redirect_url,
       orderId,
-      account: selectedAccount, // ✅ TAMBAHKAN INI
     });
 
     return NextResponse.json(order, { status: 201 });
