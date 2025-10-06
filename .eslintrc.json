@@ -1,0 +1,11 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "off", 
+    "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
+    "react-hooks/exhaustive-deps": "warn", 
+    "no-unused-vars": "warn",
+    "@next/next/no-img-element": "warn", 
+    "jsx-a11y/alt-text": "warn"
+  }
+}
