@@ -5,7 +5,10 @@ const nextConfig = {
   },
   typescript: {
     ignoreBuildErrors: true, // optional: kalau error TS juga mau dilewatin
-  }
+  },
+  experimental: {
+    optimizeCss: false, // 🚀 matikan lightningcss biar gak error di Vercel
+  },
 }
 
 module.exports = nextConfig
