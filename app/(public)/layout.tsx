@@ -1,12 +1,12 @@
-//app/(public)/layout.tsx
+// app/(public)/layout.tsx
 import Navbar from "@/components/public/navbar";
 import Footer from "@/components/public/footer";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-black">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Navbar />
-      <main className="flex-grow mt-16 bg-white dark:bg-black">
+      <main className="flex-grow pt-16">
         {children}
       </main>
       <Footer />

@@ -1,16 +1,20 @@
-//app/(public)/page.tsx
+// app/(public)/page.tsx
 import SectionHero from "@/components/public/sectionhero";
-import Productgird from "@/components/public/productgird";
-import Faq from "@/components/public/faq"
-// import Payment from "@/components/public/payment"
+import ProductGrid from "@/components/public/productgird";
+import FAQ from "@/components/public/faq";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black">
+    <div className="min-h-screen">
       <SectionHero />
-      <Productgird />
-      <Faq />
-      {/* <Payment /> */}
+      
+      <section className="py-16 bg-background">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <ProductGrid />
+        </div>
+      </section>
+      
+      <FAQ />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-//components/public/productgird.tsx
+// components/public/productgird.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -87,24 +87,23 @@ export default function ProductGrid() {
   };
 
   return (
-    <div className="space-y-8 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-10">
       {/* Filter Toggle */}
       <div className="flex justify-center">
-        <div className="flex flex-wrap gap-1 sm:gap-2 p-1 sm:p-2 bg-muted/30 rounded-xl justify-center">
+        <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-xl">
           {categories.map((c) => (
-          <Button
-            key={c.value}
-            size="sm"
-            onClick={() => setFilter(c.value)}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200
-              ${
+            <Button
+              key={c.value}
+              size="sm"
+              onClick={() => setFilter(c.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 filter === c.value
-                  ? "bg-[#005EE8] text-white hover:bg-[#004ecc]"
-                  : "bg-transparent text-foreground hover:bg-muted/40 dark:hover:bg-zinc-800"
+                  ? "bg-[#0956C8] text-white hover:bg-[#0747A5]"
+                  : "bg-transparent text-foreground hover:bg-muted"
               }`}
-          >
-            {c.label}
-          </Button>
+            >
+              {c.label}
+            </Button>
           ))}
         </div>
       </div>
@@ -112,55 +111,50 @@ export default function ProductGrid() {
       {/* Grid Produk */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
         {filteredProducts.length === 0 ? (
-          <div className="col-span-full text-center py-16 text-muted-foreground text-lg font-medium">
+          <div className="col-span-full text-center py-20 text-muted-foreground text-lg font-medium">
             🚫 Tidak ada produk ditemukan dalam kategori ini.
           </div>
         ) : (
           filteredProducts.map((product) => {
             const stock = getStock(product);
             return (
-            <Card
-              key={product._id}
-              onClick={() => handleCardClick(product._id)}
-              className="cursor-pointer w-full 
-                bg-white dark:bg-zinc-900 
-                shadow-md hover:shadow-lg transition-all duration-300 
-                rounded-2xl overflow-hidden transform hover:-translate-y-1 
-                border border-gray-100 dark:border-zinc-800"
-            >
-              {/* Gambar Produk */}
-              <div className="p-2">
-                <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden 
-                  bg-gray-100 dark:bg-zinc-800">
-                  <img
-                    src={getValidImageUrl(product.image)}
-                    alt={product.name}
-                    className="w-full h-full object-cover rounded-xl"
-                    onError={(e) =>
-                      ((e.target as HTMLImageElement).src = "/images/fallback-product.png")
-                    }
-                  />
+              <Card
+                key={product._id}
+                onClick={() => handleCardClick(product._id)}
+                className="cursor-pointer w-full bg-card shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden transform hover:-translate-y-1 border border-border"
+              >
+                {/* Gambar Produk */}
+                <div className="p-2">
+                  <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden bg-muted">
+                    <img
+                      src={getValidImageUrl(product.image)}
+                      alt={product.name}
+                      className="w-full h-full object-cover rounded-xl"
+                      onError={(e) =>
+                        ((e.target as HTMLImageElement).src = "/images/fallback-product.png")
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
-                <span
-                  className={`text-xs sm:text-sm text-white px-3 py-1 rounded-full font-medium ${getStockColor(
-                    stock
-                  )}`}
-                >
-                  {stock === 0 ? "Stok Habis" : `Tersisa ${stock}`}
-                </span>
+                <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                  <span
+                    className={`text-xs sm:text-sm text-white px-3 py-1 rounded-full font-medium ${getStockColor(
+                      stock
+                    )}`}
+                  >
+                    {stock === 0 ? "Stok Habis" : `Tersisa ${stock}`}
+                  </span>
 
-                <span className="text-xs sm:text-sm text-muted-foreground capitalize">
-                  {product.category}
-                </span>
+                  <span className="text-xs sm:text-sm text-muted-foreground capitalize">
+                    {product.category}
+                  </span>
 
-                <h3 className="text-sm sm:text-base font-semibold leading-tight line-clamp-2">
-                  {product.name}
-                </h3>
-              </CardContent>
-            </Card>
+                  <h3 className="text-sm sm:text-base font-semibold leading-tight line-clamp-2 text-foreground">
+                    {product.name}
+                  </h3>
+                </CardContent>
+              </Card>
             );
           })
         )}
