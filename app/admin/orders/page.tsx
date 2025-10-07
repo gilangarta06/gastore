@@ -21,6 +21,8 @@ import {
   Filter,
   X,
   MoreVertical,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import {
   Dialog,
@@ -49,6 +51,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Order {
   _id: string;
+  orderId?: string;
   midtransOrderId?: string;
   customerName: string;
   phone: string;
@@ -95,7 +98,6 @@ export default function OrdersTable() {
       const data = await res.json();
       setOrders(data);
       
-      // Extract unique products dengan type-safe
       const productMap = new Map<string, ProductOption>();
       
       data.forEach((order: Order) => {
@@ -139,11 +141,25 @@ export default function OrdersTable() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const getInvoiceUrl = (order: Order) => {
+    const orderId = order.orderId || order._id;
+    return `${window.location.origin}/invoice/${orderId}`;
+  };
+
+  const copyInvoiceLink = (order: Order) => {
+    const invoiceUrl = getInvoiceUrl(order);
+    copyToClipboard(invoiceUrl, "Link Invoice");
+  };
+
+  const openInvoice = (order: Order) => {
+    const invoiceUrl = getInvoiceUrl(order);
+    window.open(invoiceUrl, "_blank");
+  };
+
   // Filter orders
   useEffect(() => {
     let filtered = [...orders];
 
-    // Filter by product
     if (selectedProduct !== "all") {
       filtered = filtered.filter((order) => {
         if (typeof order.productId === "object") {
@@ -153,7 +169,6 @@ export default function OrdersTable() {
       });
     }
 
-    // Filter by status
     if (selectedStatus !== "all") {
       filtered = filtered.filter((order) => order.status === selectedStatus);
     }
@@ -249,6 +264,7 @@ export default function OrdersTable() {
                 <SelectContent>
                   <SelectItem value="all">Semua Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
@@ -308,20 +324,20 @@ export default function OrdersTable() {
               ) : (
                 filteredOrders.map((order) => {
                   const statusVariant =
-                    order.status === "completed"
+                    order.status === "paid" || order.status === "completed"
                       ? "default"
                       : order.status === "pending"
                       ? "secondary"
                       : "outline";
 
-                  const orderId =
+                  const displayOrderId =
+                    order.orderId ||
                     order.midtransOrderId ||
                     `INV-${order._id.slice(-6).toUpperCase()}`;
                   
-                  // Shortened Order ID for table display
-                  const shortOrderId = orderId.length > 15 
-                    ? `${orderId.slice(0, 12)}...` 
-                    : orderId;
+                  const shortOrderId = displayOrderId.length > 15 
+                    ? `${displayOrderId.slice(0, 12)}...` 
+                    : displayOrderId;
 
                   const productName =
                     typeof order.productId === "object"
@@ -366,11 +382,19 @@ export default function OrdersTable() {
                               <Eye className="h-4 w-4 mr-2" />
                               Lihat Detail
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openInvoice(order)}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Buka Invoice
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => copyInvoiceLink(order)}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy Link Invoice
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600 focus:text-red-600"
                               onClick={() => {
-                                if (confirm(`Hapus pesanan ${orderId}?`)) {
+                                if (confirm(`Hapus pesanan ${displayOrderId}?`)) {
                                   deleteOrder(order._id);
                                 }
                               }}
@@ -395,7 +419,7 @@ export default function OrdersTable() {
         </div>
       </div>
 
-      {/* Dialog Detail with ScrollArea */}
+      {/* Dialog Detail with Invoice Link */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh]">
           <DialogHeader>
@@ -404,6 +428,42 @@ export default function OrdersTable() {
           <ScrollArea className="max-h-[75vh] pr-4">
             {selectedOrder && (
               <div className="space-y-4">
+                {/* Invoice Link Card */}
+                <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                            Invoice
+                          </h4>
+                        </div>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 break-all">
+                          {getInvoiceUrl(selectedOrder)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyInvoiceLink(selectedOrder)}
+                        >
+                          <Copy className="h-4 w-4 mr-1" />
+                          Copy
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => openInvoice(selectedOrder)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Buka
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Order Info Card */}
                 <Card>
                   <CardContent className="pt-6">
@@ -411,7 +471,8 @@ export default function OrdersTable() {
                       <div>
                         <p className="text-muted-foreground text-xs mb-1">Order ID</p>
                         <p className="font-medium">
-                          {selectedOrder.midtransOrderId ||
+                          {selectedOrder.orderId ||
+                            selectedOrder.midtransOrderId ||
                             `INV-${selectedOrder._id.slice(-6).toUpperCase()}`}
                         </p>
                       </div>
@@ -419,7 +480,7 @@ export default function OrdersTable() {
                         <p className="text-muted-foreground text-xs mb-1">Status</p>
                         <Badge
                           variant={
-                            selectedOrder.status === "completed"
+                            selectedOrder.status === "paid" || selectedOrder.status === "completed"
                               ? "default"
                               : selectedOrder.status === "pending"
                               ? "secondary"

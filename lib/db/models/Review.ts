@@ -1,57 +1,51 @@
-import mongoose, { Schema, Document } from "mongoose";
+// /lib/db/models/Review.ts
+import { Schema, model, models } from "mongoose";
 
-export interface IReview extends Document {
-  orderId: string; // ✅ Ubah ke string
-  productId: mongoose.Types.ObjectId;
-  customerName: string;
-  email: string;
-  rating: number; // 1-5
-  review: string;
-  variantName?: string;
-  createdAt: Date;
-}
-
-const ReviewSchema = new Schema<IReview>(
+const ReviewSchema = new Schema(
   {
-    orderId: {
-      type: String, // ✅ bukan ObjectId lagi
-      required: true,
+    orderId: { 
+      type: String, 
+      required: true, 
+      unique: true,
+      index: true 
     },
-    productId: {
-      type: Schema.Types.ObjectId,
-      ref: "Product",
+    productId: { 
+      type: Schema.Types.ObjectId, 
+      ref: "Product", 
       required: true,
+      index: true 
     },
-    customerName: {
-      type: String,
-      required: true,
+    customerName: { 
+      type: String, 
+      required: true 
     },
-    email: {
-      type: String,
-      required: true,
+    email: { 
+      type: String 
     },
-    rating: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5,
+    rating: { 
+      type: Number, 
+      required: true, 
+      min: 1, 
+      max: 5 
     },
-    review: {
-      type: String,
-      required: true,
+    review: { 
+      type: String, 
+      required: true, 
+      maxlength: 500 
     },
-    variantName: {
-      type: String,
+    variantName: { 
+      type: String 
+    },
+    isApproved: { 
+      type: Boolean, 
+      default: false 
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// ✅ Index untuk query cepat
-ReviewSchema.index({ productId: 1 });
-ReviewSchema.index({ orderId: 1 });
+// Compound index untuk query yang efisien
+ReviewSchema.index({ productId: 1, createdAt: -1 });
+ReviewSchema.index({ isApproved: 1, productId: 1 });
 
-export const Review =
-  mongoose.models.Review || mongoose.model<IReview>("Review", ReviewSchema);
+export const Review = models.Review || model("Review", ReviewSchema);

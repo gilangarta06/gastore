@@ -20,6 +20,9 @@ export async function GET(req: Request) {
       );
     }
 
+    // Initialize models to prevent OverwriteModelError
+    await Review.init();
+
     // Get all reviews for this product
     const reviews = await Review.find({ productId })
       .sort({ createdAt: -1 })
@@ -42,6 +45,7 @@ export async function GET(req: Request) {
     };
 
     return NextResponse.json({
+      success: true,
       reviews,
       stats: {
         totalReviews,
@@ -50,10 +54,15 @@ export async function GET(req: Request) {
       },
     }, { status: 200 });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("❌ Get reviews error:", err);
+    console.error("Error stack:", err.stack);
     return NextResponse.json(
-      { error: "Gagal memuat reviews" },
+      { 
+        success: false,
+        error: "Gagal memuat reviews",
+        details: process.env.NODE_ENV === "development" ? err.message : undefined
+      },
       { status: 500 }
     );
   }
@@ -70,7 +79,10 @@ export async function POST(req: Request) {
     // Validasi input
     if (!orderId || !productId || !rating || !review) {
       return NextResponse.json(
-        { error: "Data tidak lengkap" },
+        { 
+          success: false,
+          error: "Data tidak lengkap" 
+        },
         { status: 400 }
       );
     }
@@ -78,7 +90,10 @@ export async function POST(req: Request) {
     // Validasi rating
     if (rating < 1 || rating > 5) {
       return NextResponse.json(
-        { error: "Rating harus antara 1-5" },
+        { 
+          success: false,
+          error: "Rating harus antara 1-5" 
+        },
         { status: 400 }
       );
     }
@@ -86,23 +101,36 @@ export async function POST(req: Request) {
     // Validasi panjang review
     if (review.trim().length < 10) {
       return NextResponse.json(
-        { error: "Review minimal 10 karakter" },
+        { 
+          success: false,
+          error: "Review minimal 10 karakter" 
+        },
         { status: 400 }
       );
     }
 
     if (review.length > 500) {
       return NextResponse.json(
-        { error: "Review maksimal 500 karakter" },
+        { 
+          success: false,
+          error: "Review maksimal 500 karakter" 
+        },
         { status: 400 }
       );
     }
+
+    // Initialize models
+    await Order.init();
+    await Review.init();
 
     // Cari order
     const order = await Order.findOne({ orderId });
     if (!order) {
       return NextResponse.json(
-        { error: "Order tidak ditemukan" },
+        { 
+          success: false,
+          error: "Order tidak ditemukan" 
+        },
         { status: 404 }
       );
     }
@@ -110,7 +138,10 @@ export async function POST(req: Request) {
     // Cek apakah order sudah lunas
     if (order.status !== "paid") {
       return NextResponse.json(
-        { error: "Order belum lunas. Silakan selesaikan pembayaran terlebih dahulu." },
+        { 
+          success: false,
+          error: "Order belum lunas. Silakan selesaikan pembayaran terlebih dahulu." 
+        },
         { status: 400 }
       );
     }
@@ -119,7 +150,10 @@ export async function POST(req: Request) {
     const existingReview = await Review.findOne({ orderId });
     if (existingReview) {
       return NextResponse.json(
-        { error: "Order ini sudah pernah di-review" },
+        { 
+          success: false,
+          error: "Order ini sudah pernah di-review" 
+        },
         { status: 400 }
       );
     }
@@ -128,7 +162,10 @@ export async function POST(req: Request) {
     const orderProductId = order.productId.toString();
     if (orderProductId !== productId) {
       return NextResponse.json(
-        { error: "Product ID tidak sesuai dengan order" },
+        { 
+          success: false,
+          error: "Product ID tidak sesuai dengan order" 
+        },
         { status: 400 }
       );
     }
@@ -136,7 +173,10 @@ export async function POST(req: Request) {
     // Pastikan customer name ada
     if (!order.customerName) {
       return NextResponse.json(
-        { error: "Nama customer tidak ditemukan di order" },
+        { 
+          success: false,
+          error: "Nama customer tidak ditemukan di order" 
+        },
         { status: 400 }
       );
     }
@@ -156,23 +196,29 @@ export async function POST(req: Request) {
       rating,
       review: review.trim(),
       variantName,
-      isApproved: false, // Default not approved, admin will approve later
+      isApproved: true,
     });
 
     console.log("✅ Review created:", newReview);
 
     return NextResponse.json(
       {
+        success: true,
         message: "Review berhasil dikirim! Review akan ditampilkan setelah disetujui admin.",
         review: newReview,
       },
       { status: 201 }
     );
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("❌ Submit review error:", err);
+    console.error("Error stack:", err.stack);
     return NextResponse.json(
-      { error: "Gagal mengirim review" },
+      { 
+        success: false,
+        error: "Gagal mengirim review",
+        details: process.env.NODE_ENV === "development" ? err.message : undefined
+      },
       { status: 500 }
     );
   }
