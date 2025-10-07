@@ -1,3 +1,4 @@
+//app/(public)/page.tsx
 import SectionHero from "@/components/public/sectionhero";
 import Productgird from "@/components/public/productgird";
 import Faq from "@/components/public/faq"

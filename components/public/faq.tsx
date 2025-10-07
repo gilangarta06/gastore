@@ -1,3 +1,4 @@
+//components/public/faq.tsx
 "use client";
 
 import {

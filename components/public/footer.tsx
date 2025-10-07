@@ -1,3 +1,4 @@
+//components/public/footer.tsx
 import React from "react";
 import { FaInstagram } from "react-icons/fa";
 

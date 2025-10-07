@@ -1,3 +1,4 @@
+//components/public/productgird.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
