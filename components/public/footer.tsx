@@ -1,46 +1,27 @@
 import React from "react";
-import { FaFacebook, FaTwitter, FaGithub, FaLinkedin } from "react-icons/fa";
+import { FaInstagram } from "react-icons/fa";
 
 export default function Footer() {
   return (
-    <footer className="bg-white dark:bg-black py-12 transition-colors duration-500">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+    <footer className="bg-white dark:bg-black pt-14 pb-12 transition-colors duration-500 relative overflow-hidden rounded-t-[3rem] shadow-inner">
+      {/* Garis Biru Melengkung */}
+      <div className="absolute top-0 left-0 w-full h-3 bg-[#005EE8] rounded-t-[3rem]" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Top Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Brand + Social */}
+          {/* Brand + Instagram */}
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               GA Store
             </h2>
-            <div className="flex space-x-6 mt-4 text-gray-500 dark:text-gray-400">
+            <div className="flex mt-4 text-gray-500 dark:text-gray-400">
               <a
                 href="#"
-                aria-label="Facebook"
-                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
+                aria-label="Instagram"
+                className="hover:text-[#E1306C] transition-colors duration-300"
               >
-                <FaFacebook size={24} />
-              </a>
-              <a
-                href="#"
-                aria-label="Twitter"
-                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
-              >
-                <FaTwitter size={24} />
-              </a>
-              <a
-                href="#"
-                aria-label="GitHub"
-                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
-              >
-                <FaGithub size={24} />
-              </a>
-              <a
-                href="#"
-                aria-label="LinkedIn"
-                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
-              >
-                <FaLinkedin size={24} />
+                <FaInstagram size={28} />
               </a>
             </div>
           </div>
@@ -74,7 +55,7 @@ export default function Footer() {
                     <li key={label}>
                       <a
                         href={href}
-                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
+                        className="hover:text-[#005EE8] dark:hover:text-[#4D9EFF] transition-colors duration-300"
                       >
                         {label}
                       </a>

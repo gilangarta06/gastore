@@ -31,7 +31,6 @@ interface Category {
   label: string;
 }
 
-/* ------------------- HELPER ------------------- */
 function getValidImageUrl(src?: string) {
   if (!src) return "/images/fallback-product.png";
   try {
@@ -42,7 +41,6 @@ function getValidImageUrl(src?: string) {
   }
 }
 
-/* ------------------- GRID PRODUK ------------------- */
 export default function ProductGrid() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState<string>("semua");
@@ -78,8 +76,13 @@ export default function ProductGrid() {
     product.variants.reduce((sum, v) => sum + (v.quantity || 0), 0);
 
   const handleCardClick = (productId: string) => {
-    // Buka halaman baru dengan URL produk
     window.location.href = `/products/${productId}`;
+  };
+
+  const getStockColor = (stock: number) => {
+    if (stock === 0) return "bg-red-500";
+    if (stock <= 3) return "bg-yellow-500";
+    return "bg-green-500";
   };
 
   return (
@@ -88,50 +91,67 @@ export default function ProductGrid() {
       <div className="flex justify-center">
         <div className="flex flex-wrap gap-1 sm:gap-2 p-1 sm:p-2 bg-muted/30 rounded-xl justify-center">
           {categories.map((c) => (
-            <Button
-              key={c.value}
-              variant={filter === c.value ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setFilter(c.value)}
-              className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200"
-            >
-              {c.label}
-            </Button>
+          <Button
+            key={c.value}
+            size="sm"
+            onClick={() => setFilter(c.value)}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200
+              ${
+                filter === c.value
+                  ? "bg-[#005EE8] text-white hover:bg-[#004ecc]"
+                  : "bg-transparent text-foreground hover:bg-muted/40 dark:hover:bg-zinc-800"
+              }`}
+          >
+            {c.label}
+          </Button>
           ))}
         </div>
       </div>
 
       {/* Grid Produk */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-5 sm:gap-6">
         {filteredProducts.length === 0 ? (
           <div className="col-span-full text-center py-16 text-muted-foreground text-lg font-medium">
             🚫 Tidak ada produk ditemukan dalam kategori ini.
           </div>
         ) : (
-          filteredProducts.map((product) => (
+          filteredProducts.map((product) => {
+            const stock = getStock(product);
+            return (
             <Card
               key={product._id}
               onClick={() => handleCardClick(product._id)}
-              className="cursor-pointer w-full bg-muted/20 shadow-md hover:shadow-lg transition-all duration-300
-                rounded-2xl overflow-hidden transform hover:-translate-y-1"
+              className="cursor-pointer w-full 
+                bg-white dark:bg-zinc-900 
+                shadow-md hover:shadow-lg transition-all duration-300 
+                rounded-2xl overflow-hidden transform hover:-translate-y-1 
+                border border-gray-100 dark:border-zinc-800"
             >
-              <CardContent className="p-4 flex flex-col items-center text-center">
-                <div className="relative w-24 h-24 mb-3">
+              {/* Gambar Produk */}
+              <div className="p-2">
+                <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden 
+                  bg-gray-100 dark:bg-zinc-800">
                   <img
                     src={getValidImageUrl(product.image)}
                     alt={product.name}
-                    className="w-full h-full rounded-xl object-cover"
+                    className="w-full h-full object-cover rounded-xl"
                     onError={(e) =>
                       ((e.target as HTMLImageElement).src = "/images/fallback-product.png")
                     }
                   />
                 </div>
+              </div>
 
-                <span className="text-xs sm:text-sm px-3 py-1 bg-yellow-500 text-white rounded-full mb-2">
-                  Tersisa {getStock(product)}
+              <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
+                <span
+                  className={`text-xs sm:text-sm text-white px-3 py-1 rounded-full font-medium ${getStockColor(
+                    stock
+                  )}`}
+                >
+                  {stock === 0 ? "Stok Habis" : `Tersisa ${stock}`}
                 </span>
 
-                <span className="text-xs sm:text-sm text-muted-foreground mb-1 capitalize">
+                <span className="text-xs sm:text-sm text-muted-foreground capitalize">
                   {product.category}
                 </span>
 
@@ -140,7 +160,8 @@ export default function ProductGrid() {
                 </h3>
               </CardContent>
             </Card>
-          ))
+            );
+          })
         )}
       </div>
     </div>

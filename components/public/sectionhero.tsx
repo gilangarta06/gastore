@@ -66,19 +66,6 @@ export default function PromoCarousel() {
           <ChevronRight size={20} className="sm:w-6 sm:h-6" />
         </button>
       </div>
-
-      {/* Dots */}
-      <div className="absolute bottom-3 sm:bottom-4 flex space-x-2 sm:space-x-3">
-        {slides.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrent(idx)}
-            className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all ${
-              idx === current ? "bg-blue-500 scale-110" : "bg-gray-400"
-            }`}
-          />
-        ))}
-      </div>
     </section>
   );
 }
