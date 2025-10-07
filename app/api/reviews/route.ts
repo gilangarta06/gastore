@@ -3,9 +3,6 @@ import { connectDB } from "@/lib/db/mongodb";
 import { Review } from "@/lib/db/models/Review";
 import { Order } from "@/lib/db/models/Order";
 
-// =============================
-// 📌 GET — Ambil reviews berdasarkan productId
-// =============================
 export async function GET(req: Request) {
   try {
     await connectDB();
@@ -20,13 +17,11 @@ export async function GET(req: Request) {
       );
     }
 
-    // Ambil semua reviews untuk produk ini
-    const reviews = await Review.find({ productId })
+       const reviews = await Review.find({ productId })
       .sort({ createdAt: -1 })
       .lean();
 
-    // Hitung rata-rata rating
-    const totalReviews = reviews.length;
+        const totalReviews = reviews.length;
     const averageRating =
       totalReviews > 0
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
@@ -48,18 +43,14 @@ export async function GET(req: Request) {
   }
 }
 
-// =============================
-// 📝 POST — Submit review baru
-// =============================
 export async function POST(req: Request) {
   try {
     await connectDB();
 
     const body = await req.json();
-    const { orderId, rating, review } = body;
+    const { orderId, productId, rating, review } = body;
 
-    // Validasi input
-    if (!orderId || !rating || !review) {
+    if (!orderId || !productId || !rating || !review) {
       return NextResponse.json(
         { error: "Data tidak lengkap" },
         { status: 400 }
@@ -73,7 +64,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Cari order
     const order = await Order.findOne({ orderId });
     if (!order) {
       return NextResponse.json(
@@ -90,7 +80,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Cek apakah sudah pernah review
+    // ✅ Cek apakah orderId STRING ini sudah pernah review
     const existingReview = await Review.findOne({ orderId });
     if (existingReview) {
       return NextResponse.json(
@@ -99,15 +89,19 @@ export async function POST(req: Request) {
       );
     }
 
-    // Buat review baru
-    const newReview = await Review.create({
-      orderId: order._id,
-      productId: order.productId,
+    // ✅ Extract variant name yang benar
+    const variantName = typeof order.variant === "object" 
+      ? order.variant.name 
+      : order.variant;
+
+      const newReview = await Review.create({
+      orderId: order.orderId, // ✅ Gunakan orderId string (ORD-xxxx), bukan _id
+      productId: productId, // ✅ Dari frontend
       customerName: order.customerName,
-      email: order.email,
+      email: order.email || "",
       rating,
       review,
-      variantName: order.variant,
+      variantName,
     });
 
     return NextResponse.json(
