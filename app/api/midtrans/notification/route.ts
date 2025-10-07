@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Product not found" }, { status: 200 });
     }
 
-    const invoiceUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/invoice/${order._id}`;
+    const invoiceUrl = `${process.env.NEXT_PUBLIC_BASE_URL}invoice/${order._id}`;
 
     // 🎯 Handle status Midtrans
     if (["settlement", "capture"].includes(transaction_status)) {
