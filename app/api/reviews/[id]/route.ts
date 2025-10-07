@@ -204,7 +204,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: true,
-        message: "Review berhasil dikirim! Review akan ditampilkan setelah disetujui admin.",
+        message: "Review berhasil dikirim! Terima kasih atas feedback Anda.",
         review: newReview,
       },
       { status: 201 }
