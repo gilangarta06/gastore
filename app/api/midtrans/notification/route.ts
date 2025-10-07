@@ -26,20 +26,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Product not found" }, { status: 200 });
     }
 
+    const invoiceUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/invoice/${order._id}`;
+
     // 🎯 Handle status Midtrans
     if (["settlement", "capture"].includes(transaction_status)) {
       order.status = "paid";
       await order.save();
 
-      // ✅ Ambil akun dari order (sudah disimpan saat order dibuat)
       const account = order.account;
 
       if (account && account.username && account.password) {
-        // 💬 Link invoice (public page)
-        const invoiceUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/invoice/${order._id}`;
-
-        // 💬 Pesan WhatsApp KONFIRMASI + AKUN
-        const message = `
+        // 💬 Pesan ke PEMBELI
+        const messageCustomer = `
 🎉 *PEMBAYARAN BERHASIL!* 🎉
 
 Halo *${order.customerName}*! 
@@ -53,30 +51,40 @@ Berikut detail pesanan dan akun Anda:
 🔖 *Variant:* ${order.variant.name}
 💰 *Total Dibayar:* Rp${order.total?.toLocaleString("id-ID")}
 📅 *Tanggal:* ${new Date().toLocaleString("id-ID")}
-
 ━━━━━━━━━━━━━━━━━
+
 🔐 *DETAIL AKUN ANDA*
-━━━━━━━━━━━━━━━━━
-
 👤 *Username:* \`${account.username}\`
 🔑 *Password:* \`${account.password}\`
-
-━━━━━━━━━━━━━━━━━
 
 🧾 *Lihat Invoice Anda:*
 ${invoiceUrl}
 
-⚠️ *PENTING:*
-- Simpan baik-baik data akun ini
-- Jangan share ke orang lain
-- Segera ganti password setelah login
-
-_Terima kasih telah berbelanja di GA Store! 💙_
-_Butuh bantuan? Hubungi admin kami._
+_Terima kasih telah berbelanja di GA Store 💙_
 `;
 
-        await sendWhatsApp(order.phone, message);
-        console.log(`✅ Order ${order_id} sukses — akun & invoice dikirim ke ${order.phone}`);
+        // 💬 Pesan ke ADMIN
+        const messageAdmin = `
+📢 *ORDER BARU LUNAS!*
+
+🧾 *Order ID:* ${order.midtransOrderId}
+👤 *Nama:* ${order.customerName}
+📞 *Nomor:* ${order.phone}
+📦 *Produk:* ${product.name} (${order.variant.name})
+💰 *Total:* Rp${order.total?.toLocaleString("id-ID")}
+📅 *Tanggal:* ${new Date().toLocaleString("id-ID")}
+
+🔗 *Invoice:* ${invoiceUrl}
+
+✅ Order berhasil dibayar dan akun sudah terkirim ke pembeli.
+`;
+
+        await sendWhatsApp(order.phone, messageCustomer); // ke pembeli
+        if (process.env.ADMIN_PHONE) {
+          await sendWhatsApp(process.env.ADMIN_PHONE, messageAdmin); // ke admin
+        }
+
+        console.log(`✅ Order ${order_id} sukses — notifikasi dikirim ke pembeli & admin`);
       } else {
         console.warn(`⚠️ Akun tidak tersedia di order ${order_id}`);
       }
@@ -93,12 +101,20 @@ _Butuh bantuan? Hubungi admin kami._
       // ⚠️ Kembalikan akun ke stok jika pembayaran gagal
       const variant = product.variants.find((v: any) => v.name === order.variant.name);
       if (variant && order.account) {
-        variant.accounts.unshift(order.account); // Kembalikan akun ke depan array
+        variant.accounts.unshift(order.account);
         variant.quantity += 1;
         await product.save();
         console.log(`♻️ Akun dikembalikan ke stok untuk order ${order_id}`);
       }
-      
+
+      // 💬 Kirim info pembatalan ke admin
+      if (process.env.ADMIN_PHONE) {
+        await sendWhatsApp(
+          process.env.ADMIN_PHONE,
+          `❌ *ORDER DIBATALKAN*\n🧾 ${order.midtransOrderId}\n👤 ${order.customerName}\nProduk: ${product.name} (${order.variant.name})`
+        );
+      }
+
       console.log(`❌ Order ${order_id} dibatalkan`);
     }
 
