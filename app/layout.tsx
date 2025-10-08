@@ -1,20 +1,4 @@
-// // app/layout.tsx - TANPA ThemeProvider
-// import './globals.css';
-
-// export default function RootLayout({ 
-//   children 
-// }: { 
-//   children: React.ReactNode 
-// }) {
-//   return (
-//     <html lang="en" suppressHydrationWarning>
-//       <body>
-//         {children}
-//       </body>
-//     </html>
-//   );
-// }
-
+// app/layout.tsx
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
