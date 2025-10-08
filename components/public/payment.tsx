@@ -2,15 +2,16 @@
 
 // import Image from 'next/image';
 
-// // const banks = [
-// //   { id: 'bca', name: 'BCA', src: '/banks/bca.png' },
-// //   { id: 'bni', name: 'BNI', src: '/banks/bni.png' },
-// //   { id: 'mandiri', name: 'Mandiri', src: '/banks/mandiri.png' },
-// //   { id: 'gopay', name: 'GoPay', src: '/banks/gopay.png' },
-// //   { id: 'ovo', name: 'OVO', src: '/banks/ovo.png' },
-// //   { id: 'dana', name: 'DANA', src: '/banks/dana.png' },
-// //   { id: 'shopeepay', name: 'ShopeePay', src: '/banks/shopeepay.png' },
-// // ];
+// const banks = [
+//   { id: 'bca', name: 'BCA', src: 'https://www.bca.co.id/images/logo/bca_logo.png' },
+//   { id: 'bni', name: 'BNI', src: 'https://www.bni.co.id/assets/img/logo-bni.svg' },
+//   { id: 'mandiri', name: 'Mandiri', src: 'https://www.mandiri.co.id/assets/mandiri/images/logo/mandiri_logo.svg' },
+//   { id: 'gopay', name: 'GoPay', src: 'https://gopay.com/images/gopay-logo.svg' },
+//   { id: 'ovo', name: 'OVO', src: 'https://ovo.id/images/ovo-logo.svg' },
+//   { id: 'dana', name: 'DANA', src: 'https://www.dana.id/images/dana-logo.svg' },
+//   { id: 'shopeepay', name: 'ShopeePay', src: 'https://shopeepay.com/images/shopeepay-logo.svg' },
+// ];
+
 
 // export default function PaymentPage() {
 //   return (

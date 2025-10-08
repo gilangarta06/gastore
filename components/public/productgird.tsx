@@ -121,38 +121,61 @@ export default function ProductGrid() {
               <Card
                 key={product._id}
                 onClick={() => handleCardClick(product._id)}
-                className="cursor-pointer w-full bg-card shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden transform hover:-translate-y-1 border border-border"
+                className="group cursor-pointer w-full bg-white transition-all duration-300 rounded-3xl overflow-hidden hover:-translate-y-1 border border-gray-100"
               >
                 {/* Gambar Produk */}
-                <div className="p-2">
-                  <div className="relative w-full h-36 sm:h-44 rounded-xl overflow-hidden bg-muted">
-                    <img
-                      src={getValidImageUrl(product.image)}
-                      alt={product.name}
-                      className="w-full h-full object-cover rounded-xl"
-                      onError={(e) =>
-                        ((e.target as HTMLImageElement).src = "/images/fallback-product.png")
-                      }
-                    />
-                  </div>
+                <div className="aspect-[4/3]">
+                  <img
+                    src={getValidImageUrl(product.image)}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) =>
+                      ((e.target as HTMLImageElement).src = "/images/fallback-product.png")
+                    }
+                  />
                 </div>
 
-                <CardContent className="p-4 flex flex-col items-center text-center space-y-2">
-                  <span
-                    className={`text-xs sm:text-sm text-white px-3 py-1 rounded-full font-medium ${getStockColor(
-                      stock
-                    )}`}
-                  >
-                    {stock === 0 ? "Stok Habis" : `Tersisa ${stock}`}
-                  </span>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    {/* Header: Category and Stock */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full capitalize font-medium">
+                        {product.category}
+                      </span>
+                      <span
+                        className={`text-xs text-white px-2.5 py-1 rounded-full font-medium ${
+                          stock === 0 ? "bg-red-500" : stock <= 3 ? "bg-yellow-500" : "bg-green-500"
+                        }`}
+                      >
+                        {stock === 0 ? "Stok Habis" : `${stock} tersisa`}
+                      </span>
+                    </div>
 
-                  <span className="text-xs sm:text-sm text-muted-foreground capitalize">
-                    {product.category}
-                  </span>
-
-                  <h3 className="text-sm sm:text-base font-semibold leading-tight line-clamp-2 text-foreground">
-                    {product.name}
-                  </h3>
+                    {/* Product Name */}
+                    <h3 className="text-sm font-medium leading-tight line-clamp-2 text-gray-800 group-hover:text-blue-600 transition-colors">
+                      {product.name}
+                    </h3>
+                    
+                    {/* Rating */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <svg
+                              key={i}
+                              className="w-3.5 h-3.5 fill-current text-yellow-400"
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27Z" />
+                            </svg>
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-500">5.0</span>
+                      </div>
+                      <span className="text-xs text-gray-500">100+ terjual</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
