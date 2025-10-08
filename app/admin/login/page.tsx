@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
     const token = localStorage.getItem('adminToken');
     if (token) {
       console.log('Already logged in, redirecting...');
-      router.replace('/admin/orders');
+      router.replace('/admin');
     }
   }, [router]);
 
@@ -53,10 +53,10 @@ export default function AdminLoginPage() {
       localStorage.setItem('adminData', JSON.stringify(data.admin));
 
       console.log('✅ Token saved to localStorage');
-      console.log('🔄 Redirecting to /admin/orders...');
+      console.log('🔄 Redirecting to /admin...');
       
       // Force redirect dengan window.location
-      window.location.href = '/admin/orders';
+      window.location.href = '/admin';
       
     } catch (err: any) {
       console.error('❌ Login error:', err);
