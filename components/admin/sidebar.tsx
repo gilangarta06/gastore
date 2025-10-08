@@ -65,7 +65,6 @@ export function AppSidebar() {
 
   useEffect(() => {
     setIsMounted(true);
-    // Initialize open state based on active child
     const initial: Record<string, boolean> = {};
     sidebarItems.forEach((item) => {
       if (item.items) {
@@ -84,13 +83,14 @@ export function AppSidebar() {
     }));
   };
 
-  // Don't render until mounted to prevent hydration mismatch
   if (!isMounted) {
     return (
       <Sidebar>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Admin Panel</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-base font-semibold">
+              Admin Panel
+            </SidebarGroupLabel>
           </SidebarGroup>
         </SidebarContent>
       </Sidebar>
@@ -101,7 +101,9 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Admin Panel</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-base font-semibold">
+            Admin Panel
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {sidebarItems.map((item) => {
@@ -112,22 +114,29 @@ export function AppSidebar() {
 
                   return (
                     <SidebarMenuItem key={item.title} suppressHydrationWarning>
-                      <Collapsible 
-                        open={isOpen} 
+                      <Collapsible
+                        open={isOpen}
                         onOpenChange={() => toggleMenu(item.title)}
                       >
                         <CollapsibleTrigger asChild suppressHydrationWarning>
-                          <SidebarMenuButton suppressHydrationWarning>
-                            <item.icon />
+                          <SidebarMenuButton
+                            className="text-[15px] py-2"
+                            suppressHydrationWarning
+                          >
+                            <item.icon className="h-4 w-4" />
                             <span>{item.title}</span>
-                            <ChevronRight 
-                              className="ml-auto transition-transform duration-200" 
-                              style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                            <ChevronRight
+                              className="ml-auto transition-transform duration-200"
+                              style={{
+                                transform: isOpen
+                                  ? "rotate(90deg)"
+                                  : "rotate(0deg)",
+                              }}
                             />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent suppressHydrationWarning>
-                          <SidebarMenuSub>
+                          <SidebarMenuSub className="ml-6">
                             {item.items.map((subItem) => {
                               const isSubActive = pathname === subItem.url;
                               return (
@@ -135,9 +144,10 @@ export function AppSidebar() {
                                   <SidebarMenuSubButton
                                     asChild
                                     isActive={isSubActive}
+                                    className="text-sm py-1.5"
                                   >
                                     <Link href={subItem.url}>
-                                      <subItem.icon />
+                                      <subItem.icon className="h-3.5 w-3.5" />
                                       <span>{subItem.title}</span>
                                     </Link>
                                   </SidebarMenuSubButton>
@@ -153,9 +163,13 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className="text-[15px] py-2"
+                    >
                       <Link href={item.url}>
-                        <item.icon />
+                        <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -173,7 +187,10 @@ export function AppSidebar() {
           <SidebarMenuItem suppressHydrationWarning>
             <DropdownMenu>
               <DropdownMenuTrigger asChild suppressHydrationWarning>
-                <SidebarMenuButton suppressHydrationWarning>
+                <SidebarMenuButton
+                  className="text-[15px] py-2"
+                  suppressHydrationWarning
+                >
                   <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span>Theme</span>
