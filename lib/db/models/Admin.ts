@@ -1,3 +1,4 @@
+//lib/db/models/Admin.ts
 import mongoose from 'mongoose';
 
 const AdminSchema = new mongoose.Schema({

@@ -1,85 +1,69 @@
-// components/public/faq.tsx
 "use client";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { motion } from "framer-motion";
-import { HelpCircle } from "lucide-react";
+import { ShieldCheck, Zap, Headphones } from "lucide-react";
 
-const faqs = [
+const reasons = [
   {
-    question: "Apa itu layanan ini?",
-    answer:
-      "Kami menyediakan berbagai layanan digital seperti AI, musik, streaming, dan lainnya dengan harga terjangkau.",
+    icon: <ShieldCheck className="w-8 h-8 text-[#0956C8] dark:text-[#5EA8FF]" />,
+    title: "Aman & Terpercaya",
+    desc: "Data Anda aman dengan sistem keamanan berlapis yang terjamin.",
   },
   {
-    question: "Bagaimana cara membeli produk?",
-    answer:
-      "Pilih produk yang ingin dibeli, lalu ikuti instruksi checkout. Anda bisa melakukan pembayaran melalui metode yang tersedia.",
+    icon: <Zap className="w-8 h-8 text-[#0956C8] dark:text-[#5EA8FF]" />,
+    title: "Proses Cepat & Otomatis",
+    desc: "Transaksi diproses otomatis dan instan, tanpa menunggu lama.",
   },
   {
-    question: "Apakah akun bisa dipakai lebih dari satu orang?",
-    answer:
-      "Tergantung jenis produk. Beberapa layanan bisa digunakan bersama, namun sebagian lain hanya untuk 1 user.",
-  },
-  {
-    question: "Bagaimana jika stok habis?",
-    answer:
-      "Jika stok habis, produk tidak bisa dibeli sementara waktu. Silakan tunggu hingga stok tersedia kembali.",
+    icon: <Headphones className="w-8 h-8 text-[#0956C8] dark:text-[#5EA8FF]" />,
+    title: "Dukungan 24 Jam",
+    desc: "Tim kami siap membantu Anda kapan pun dibutuhkan.",
   },
 ];
 
-export default function FAQ() {
+export default function WhyChooseUs() {
   return (
     <section className="w-full py-20 bg-background">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="max-w-3xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col items-center text-center mb-12">
-            <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-[#0956C8]/10 mb-4">
-              <HelpCircle className="w-8 h-8 text-[#0956C8] dark:text-[#5EA8FF]" />
-            </div>
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-3xl sm:text-4xl font-bold mb-3 text-foreground"
-            >
-              Frequently Asked Questions
-            </motion.h2>
-            <p className="text-muted-foreground max-w-md">
-              Jawaban cepat untuk pertanyaan yang paling sering ditanyakan pelanggan kami.
-            </p>
-          </div>
-
-          {/* Accordion Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+      <div className="max-w-5xl mx-auto px-6 md:px-12">
+        {/* Header */}
+        <div className="text-center mb-14">
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.5 }}
+            className="text-3xl sm:text-4xl font-bold mb-3 text-foreground"
           >
-            <Accordion
-              type="single"
-              collapsible
-              className="w-full divide-y divide-border border border-border rounded-2xl bg-card/70 backdrop-blur-sm shadow-md"
-            >
-              {faqs.map((faq, idx) => (
-                <AccordionItem key={idx} value={`faq-${idx}`} className="px-6">
-                  <AccordionTrigger className="text-left text-base sm:text-lg font-semibold py-4 text-foreground hover:text-[#0956C8] dark:hover:text-[#5EA8FF] transition-colors">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-sm sm:text-base text-muted-foreground pb-4 leading-relaxed">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </motion.div>
+            Mengapa Memilih Kami
+          </motion.h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Alasan mengapa pelanggan mempercayai layanan digital kami.
+          </p>
         </div>
+
+        {/* 3 Cards in a Row */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col md:flex-row items-center justify-center gap-8"
+        >
+          {reasons.map((reason, idx) => (
+            <div
+              key={idx}
+              className="flex flex-col items-center text-center p-8 bg-card/70 backdrop-blur-sm border border-border rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 w-full md:w-1/3"
+            >
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#0956C8]/10 mb-4">
+                {reason.icon}
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {reason.title}
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {reason.desc}
+              </p>
+            </div>
+          ))}
+        </motion.div>
       </div>
     </section>
   );

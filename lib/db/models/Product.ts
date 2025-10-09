@@ -1,3 +1,4 @@
+//lib/db/models/Product.ts
 import { Schema, model, models, Document } from "mongoose";
 
 // =========================

@@ -2,6 +2,7 @@
 import SectionHero from "@/components/public/sectionhero";
 import ProductGrid from "@/components/public/productgird";
 import FAQ from "@/components/public/faq";
+import Payment from "@/components/public/payment";
 
 export default function HomePage() {
   return (
@@ -15,6 +16,7 @@ export default function HomePage() {
       </section>
       
       <FAQ />
+      <Payment />
     </div>
   );
 }

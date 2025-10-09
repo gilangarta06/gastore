@@ -1,3 +1,4 @@
+//lib/db/models/Accounts.ts
 import { Schema, model, models } from "mongoose";
 
 const AccountSchema = new Schema(

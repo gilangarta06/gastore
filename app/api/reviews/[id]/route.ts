@@ -1,4 +1,4 @@
-// /app/api/reviews/route.ts
+// /app/api/reviews/[id]/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { Review } from "@/lib/db/models/Review";
