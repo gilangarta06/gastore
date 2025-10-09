@@ -1,5 +1,5 @@
 // ========================================
-// FILE 1: app/api/midtrans/notification/route.ts
+// FILE 2: /app/api/midtrans/notification/route.ts (FIXED)
 // ========================================
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
@@ -12,91 +12,85 @@ export async function POST(req: Request) {
     await connectDB();
 
     const body = await req.json();
-    console.log("📩 Midtrans notification received:", body);
+    console.log("📩 Midtrans notification received:", JSON.stringify(body, null, 2));
 
     const { order_id, transaction_status, fraud_status } = body;
 
-    // 🔍 Cari order berdasarkan ID Midtrans
+    // 🔍 Cari order berdasarkan midtransOrderId (ORD-XXXXXX)
     const order = await Order.findOne({ midtransOrderId: order_id }).populate("productId");
+    
     if (!order) {
-      console.warn(`⚠️ Order ${order_id} tidak ditemukan`);
+      console.warn(`⚠️ Order dengan midtransOrderId ${order_id} tidak ditemukan`);
       return NextResponse.json({ message: "Order not found" }, { status: 200 });
     }
 
+    console.log(`✅ Order ditemukan: ${order.orderId} (Midtrans: ${order.midtransOrderId})`);
+
     const product = await Product.findById(order.productId?._id);
     if (!product) {
-      console.warn(`⚠️ Produk ${order.productId?._id} tidak ditemukan`);
+      console.warn(`⚠️ Produk tidak ditemukan`);
       return NextResponse.json({ message: "Product not found" }, { status: 200 });
     }
 
-    // 🔧 FIX: Gunakan orderId yang konsisten (orderId atau midtransOrderId)
-    const displayOrderId = order.orderId || order.midtransOrderId;
-    const invoiceUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/invoice/${displayOrderId}`;
+    // 🎯 INVOICE URL - pakai orderId (INV-XXXXXX) untuk user
+    const invoiceUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/invoice/${order.orderId}`;
 
-    console.log(`📝 Transaction status: ${transaction_status}, Fraud status: ${fraud_status}`);
+    console.log(`📝 Status: ${transaction_status}, Fraud: ${fraud_status || 'N/A'}`);
 
-    // 🎯 Handle status Midtrans
+    // Handle status transaksi
     if (transaction_status === "capture") {
-      // Untuk credit card, cek fraud_status
       if (fraud_status === "accept") {
         order.status = "paid";
         await order.save();
-        console.log(`✅ Order ${order_id} paid (capture + accept)`);
-        
-        // Kirim notifikasi
+        console.log(`✅ Order ${order.orderId} paid (capture + accept)`);
         await sendNotifications(order, product, invoiceUrl);
       } else {
         order.status = "pending";
         await order.save();
-        console.log(`⏳ Order ${order_id} pending (capture but fraud_status: ${fraud_status})`);
+        console.log(`⏳ Order ${order.orderId} pending (fraud: ${fraud_status})`);
       }
     } 
     else if (transaction_status === "settlement") {
       order.status = "paid";
       await order.save();
-      console.log(`✅ Order ${order_id} paid (settlement)`);
-      
-      // Kirim notifikasi
+      console.log(`✅ Order ${order.orderId} paid (settlement)`);
       await sendNotifications(order, product, invoiceUrl);
     } 
     else if (transaction_status === "pending") {
       order.status = "pending";
       await order.save();
-      console.log(`⏳ Order ${order_id} masih pending`);
+      console.log(`⏳ Order ${order.orderId} pending`);
     } 
     else if (["expire", "cancel", "deny"].includes(transaction_status)) {
       order.status = "cancelled";
       await order.save();
       
-      // ⚠️ Kembalikan akun ke stok jika pembayaran gagal
       await returnAccountToStock(order, product);
 
-      // 💬 Kirim info pembatalan ke admin
       if (process.env.ADMIN_PHONE) {
         await sendWhatsApp(
           process.env.ADMIN_PHONE,
-          `❌ *ORDER DIBATALKAN*\n🧾 ${displayOrderId}\n👤 ${order.customerName}\nProduk: ${product.name} (${order.variant.name})`
+          `❌ *ORDER DIBATALKAN*\n🧾 ${order.orderId}\n👤 ${order.customerName}\nProduk: ${product.name} (${order.variant.name})`
         );
       }
 
-      console.log(`❌ Order ${order_id} dibatalkan`);
+      console.log(`❌ Order ${order.orderId} dibatalkan`);
     }
 
     return NextResponse.json({ message: "Notification handled" }, { status: 200 });
+    
   } catch (err) {
     console.error("❌ Midtrans callback error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
-// 📤 Helper function untuk kirim notifikasi
+// 📤 Helper: Kirim notifikasi
 async function sendNotifications(order: any, product: any, invoiceUrl: string) {
   const account = order.account;
 
   if (account && account.username && account.password) {
-    const displayOrderId = order.orderId || order.midtransOrderId;
-
-    // 💬 Pesan ke PEMBELI
+    // 💬 Pesan ke PEMBELI (pakai orderId INV-XXXXXX)
     const messageCustomer = `
 🎉 *PEMBAYARAN BERHASIL!* 🎉
 
@@ -106,7 +100,7 @@ Terima kasih atas pembayaran Anda.
 Berikut detail pesanan dan akun Anda:
 
 ━━━━━━━━━━━━━━━━━
-🧾 *Order ID:* ${displayOrderId}
+🧾 *Order ID:* ${order.orderId}
 📦 *Produk:* ${product.name}
 🔖 *Variant:* ${order.variant.name}
 💰 *Total Dibayar:* Rp${order.total?.toLocaleString("id-ID")}
@@ -127,7 +121,8 @@ _Terima kasih telah berbelanja di GA Store 💙_
     const messageAdmin = `
 📢 *ORDER BARU LUNAS!*
 
-🧾 *Order ID:* ${displayOrderId}
+🧾 *Order ID:* ${order.orderId}
+🆔 *Midtrans ID:* ${order.midtransOrderId}
 👤 *Nama:* ${order.customerName}
 📞 *Nomor:* ${order.phone}
 📦 *Produk:* ${product.name} (${order.variant.name})
@@ -139,30 +134,30 @@ _Terima kasih telah berbelanja di GA Store 💙_
 ✅ Order berhasil dibayar dan akun sudah terkirim ke pembeli.
 `;
 
-    await sendWhatsApp(order.phone, messageCustomer); // ke pembeli
-    if (process.env.ADMIN_PHONE) {
-      await sendWhatsApp(process.env.ADMIN_PHONE, messageAdmin); // ke admin
+    try {
+      await sendWhatsApp(order.phone, messageCustomer);
+      console.log(`✅ WA ke pembeli ${order.phone} berhasil`);
+      
+      if (process.env.ADMIN_PHONE) {
+        await sendWhatsApp(process.env.ADMIN_PHONE, messageAdmin);
+        console.log(`✅ WA ke admin berhasil`);
+      }
+    } catch (err) {
+      console.error("❌ Error sending WA:", err);
     }
 
-    console.log(`✅ Order ${displayOrderId} sukses — notifikasi dikirim ke pembeli & admin`);
   } else {
-    console.warn(`⚠️ Akun tidak tersedia di order ${order.orderId || order.midtransOrderId}`);
+    console.warn(`⚠️ Akun tidak tersedia di order ${order.orderId}`);
   }
 }
 
-// ♻️ Helper function untuk kembalikan akun ke stok
+// ♻️ Helper: Kembalikan akun ke stok
 async function returnAccountToStock(order: any, product: any) {
   const variant = product.variants.find((v: any) => v.name === order.variant.name);
   if (variant && order.account) {
     variant.accounts.unshift(order.account);
     variant.quantity += 1;
     await product.save();
-    console.log(`♻️ Akun dikembalikan ke stok untuk order ${order.orderId || order.midtransOrderId}`);
+    console.log(`♻️ Akun dikembalikan ke stok untuk order ${order.orderId}`);
   }
 }
-
-const getInvoiceUrl = (order: Order) => {
-  // 🔧 FIX: Gunakan orderId atau midtransOrderId, bukan _id
-  const orderId = order.orderId || order.midtransOrderId || order._id;
-  return `${window.location.origin}/invoice/${orderId}`;
-};

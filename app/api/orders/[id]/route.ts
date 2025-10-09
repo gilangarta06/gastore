@@ -1,20 +1,34 @@
-// ✅ /app/api/orders/[id]/route.ts
+// ========================================
+// FILE 3: /app/api/orders/[id]/route.ts (FIXED)
+// ========================================
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { Order } from "@/lib/db/models/Order";
 import { Types } from "mongoose";
 
-// 🔍 Helper untuk cari order by _id atau orderId
+// 🔍 Helper untuk cari order by _id, orderId, atau midtransOrderId
 async function findOrderById(id: string) {
+  // Coba sebagai MongoDB ObjectId
   if (Types.ObjectId.isValid(id)) {
-    return await Order.findById(id)
+    const order = await Order.findById(id)
       .populate("productId", "name")
       .populate("userId", "username email");
-  } else {
-    return await Order.findOne({ orderId: id })
-      .populate("productId", "name")
-      .populate("userId", "username email");
+    if (order) return order;
   }
+  
+  // Coba sebagai orderId (INV-XXXXXX)
+  const orderByOrderId = await Order.findOne({ orderId: id })
+    .populate("productId", "name")
+    .populate("userId", "username email");
+  if (orderByOrderId) return orderByOrderId;
+  
+  // Coba sebagai midtransOrderId (ORD-XXXXXX)
+  const orderByMidtrans = await Order.findOne({ midtransOrderId: id })
+    .populate("productId", "name")
+    .populate("userId", "username email");
+  if (orderByMidtrans) return orderByMidtrans;
+  
+  return null;
 }
 
 export async function GET(
@@ -54,11 +68,19 @@ export async function DELETE(
       return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
     }
 
+    // Coba hapus dengan berbagai cara
     let order;
+    
     if (Types.ObjectId.isValid(id)) {
       order = await Order.findByIdAndDelete(id);
-    } else {
+    }
+    
+    if (!order) {
       order = await Order.findOneAndDelete({ orderId: id });
+    }
+    
+    if (!order) {
+      order = await Order.findOneAndDelete({ midtransOrderId: id });
     }
 
     if (!order) {
@@ -69,36 +91,5 @@ export async function DELETE(
   } catch (err) {
     console.error("❌ Delete order error:", err);
     return NextResponse.json({ error: "Gagal menghapus order" }, { status: 500 });
-  }
-}
-
-export async function PATCH(
-  req: Request,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectDB();
-    const { id } = await context.params;
-    const body = await req.json();
-
-    if (!id) {
-      return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
-    }
-
-    let order;
-    if (Types.ObjectId.isValid(id)) {
-      order = await Order.findByIdAndUpdate(id, { $set: body }, { new: true });
-    } else {
-      order = await Order.findOneAndUpdate({ orderId: id }, { $set: body }, { new: true });
-    }
-
-    if (!order) {
-      return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
-    }
-
-    return NextResponse.json(order, { status: 200 });
-  } catch (err) {
-    console.error("❌ Update order error:", err);
-    return NextResponse.json({ error: "Gagal update order" }, { status: 500 });
   }
 }

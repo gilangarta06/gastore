@@ -1,46 +1,38 @@
 import { sendWhatsApp } from "./whatsapp";
 
-export async function sendPaymentReminder({
-  phone,
-  customerName,
-  productName,
-  variantName,
-  qty,
-  price,
-  paymentUrl,
-  orderId,
-}: {
+export async function sendPaymentReminder(data: {
   phone: string;
   customerName: string;
   productName: string;
   variantName: string;
   qty: number;
   price: number;
-  paymentUrl?: string;
-  orderId?: string;
+  paymentUrl: string;
+  orderId: string; // ✅ INV-XXXXXX
 }) {
-  const total = price * qty;
-  const date = new Date().toLocaleString("id-ID");
-
   const message = `
-Halo *${customerName}*! 👋
+🛒 *PESANAN BARU*
 
-Terima kasih telah melakukan pemesanan di GA Store.
-Berikut detail pesanan Anda:
+Halo *${data.customerName}*!
 
-🧾 *Order ID:* ${orderId || "-"}
-📦 *Produk:* ${productName}
-📦 *Variant:* ${variantName}
-💰 *Harga:* Rp${price.toLocaleString("id-ID")}
-📦 *Qty:* ${qty}
-💰 *Total:* Rp${total.toLocaleString("id-ID")}
-📅 *Tanggal:* ${date}
+Pesanan Anda telah dibuat:
 
-⏰ *Silakan selesaikan pembayaran:*
-${paymentUrl || "-"}
+━━━━━━━━━━━━━━━━━
+🧾 *Order ID:* ${data.orderId}
+📦 *Produk:* ${data.productName}
+🔖 *Variant:* ${data.variantName}
+📦 *Jumlah:* ${data.qty}
+💰 *Total:* Rp${(data.price * data.qty).toLocaleString("id-ID")}
+━━━━━━━━━━━━━━━━━
 
-_Akun akan dikirim otomatis setelah pembayaran berhasil 💙_
+💳 *Selesaikan Pembayaran:*
+${data.paymentUrl}
+
+⏰ Mohon selesaikan dalam 24 jam.
+
+_Terima kasih! - GA Store_
 `;
 
-  await sendWhatsApp(phone, message);
+  const { sendWhatsApp } = await import("./whatsapp");
+  return sendWhatsApp(data.phone, message);
 }

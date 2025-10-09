@@ -1,4 +1,6 @@
-// /app/api/orders/route.ts
+// ========================================
+// FILE 1: /app/api/orders/route.ts (FIXED)
+// ========================================
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongodb";
 import { Order } from "@/lib/db/models/Order";
@@ -9,13 +11,13 @@ import { sendPaymentReminder } from "@/lib/services/whatsappPayment";
 export async function GET() {
   try {
     await connectDB();
-
     await User.init();
     await Product.init();
 
     const orders = await Order.find()
       .populate("productId", "name")
-      .populate("userId", "username email");
+      .populate("userId", "username email")
+      .sort({ createdAt: -1 });
 
     return NextResponse.json(orders, { status: 200 });
   } catch (err) {
@@ -27,7 +29,6 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     await connectDB();
-
     const body = await req.json();
 
     if (!body.productId || !body.variant || !body.customerName || !body.phone || !body.qty) {
@@ -40,22 +41,30 @@ export async function POST(req: Request) {
     const variant = product.variants.find((v: any) => v.name === body.variant);
     if (!variant) return NextResponse.json({ error: "Variant tidak ditemukan" }, { status: 404 });
 
-    // cek stok akun
     if (!variant.accounts || variant.accounts.length === 0) {
       return NextResponse.json({ error: "Stok akun habis" }, { status: 400 });
     }
 
-    // ambil akun FIFO
-    const selectedAccount = variant.accounts.shift(); // remove first
-    variant.quantity = (variant.quantity || 0) - 1;
+    // 🎯 GENERATE 2 ID BERBEDA
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    
+    // ✅ ID untuk USER (INV-XXXXXX) - dipakai di invoice, review, WA
+    const orderId = `INV-${timestamp.toString().slice(-6)}${random.toString().padStart(4, '0')}`;
+    
+    // ✅ ID untuk MIDTRANS (ORD-XXXXXX) - dipakai untuk transaksi Midtrans
+    const midtransOrderId = `ORD-${timestamp}-${random}`;
 
-    // update product
+    console.log("📝 Generated IDs:");
+    console.log("   - Order ID (user):", orderId);
+    console.log("   - Midtrans ID:", midtransOrderId);
+
+    // Ambil akun FIFO
+    const selectedAccount = variant.accounts.shift();
+    variant.quantity = (variant.quantity || 0) - 1;
     await product.save();
 
-    // generate orderId yang sangat kecil peluang duplikat
-    const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-
-    // request Midtrans (sandbox)
+    // Request Midtrans (kirim midtransOrderId)
     const snapRes = await fetch("https://app.sandbox.midtrans.com/snap/v1/transactions", {
       method: "POST",
       headers: {
@@ -64,12 +73,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         transaction_details: {
-          order_id: orderId,
+          order_id: midtransOrderId, // ⚠️ KIRIM midtransOrderId ke Midtrans
           gross_amount: variant.price * body.qty,
         },
         customer_details: {
           first_name: body.customerName,
           phone: body.phone,
+          email: body.email || undefined,
         },
       }),
     });
@@ -77,17 +87,24 @@ export async function POST(req: Request) {
     if (!snapRes.ok) {
       const errorText = await snapRes.text();
       console.error("Midtrans error:", errorText);
+      
+      // Kembalikan akun ke stok
+      variant.accounts.unshift(selectedAccount);
+      variant.quantity += 1;
+      await product.save();
+      
       return NextResponse.json({ error: "Gagal membuat transaksi di Midtrans" }, { status: 502 });
     }
 
     const snapData = await snapRes.json();
 
-    // simpan order
+    // Simpan order dengan KEDUA ID
     const order = await Order.create({
-      orderId,
-      midtransOrderId: orderId,
+      orderId,              // ✅ INV-XXXXXX (untuk user)
+      midtransOrderId,      // ✅ ORD-XXXXXX (untuk Midtrans)
       customerName: body.customerName,
       phone: body.phone,
+      email: body.email || undefined,
       productId: product._id,
       variant: { name: variant.name, price: variant.price },
       account: selectedAccount,
@@ -98,9 +115,12 @@ export async function POST(req: Request) {
       userId: body.userId || null,
     });
 
-    console.log("✅ Order created:", order);
+    console.log("✅ Order created with IDs:", {
+      orderId: order.orderId,
+      midtransOrderId: order.midtransOrderId
+    });
 
-    // kirim WA reminder
+    // Kirim WA reminder (pakai orderId untuk user)
     await sendPaymentReminder({
       phone: body.phone,
       customerName: body.customerName,
@@ -109,35 +129,17 @@ export async function POST(req: Request) {
       qty: body.qty,
       price: variant.price,
       paymentUrl: snapData.redirect_url,
-      orderId,
+      orderId: order.orderId, // ✅ Kirim INV-XXXXXX ke user
     });
 
-    return NextResponse.json(order, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      orderId: order.orderId,           // ✅ Return orderId (INV-XXXXXX)
+      paymentUrl: snapData.redirect_url,
+    }, { status: 201 });
+    
   } catch (err) {
     console.error("Create order error:", err);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
-  }
-}
-
-// NOTE: kalau endpoint ini tidak dipakai (karena kamu punya /[id]/route.ts untuk delete),
-// tetap safer kalau jaga delete pakai orderId (bukan ObjectId) supaya tidak ada CastError.
-export async function DELETE(req: Request, { params }: { params: { id?: string } }) {
-  try {
-    await connectDB();
-
-    const id = params?.id;
-    if (!id) {
-      return NextResponse.json({ error: "ID order tidak ditemukan" }, { status: 400 });
-    }
-
-    // pake orderId lookup (bisa menerima ORD-xxx)
-    const order = await Order.findOneAndDelete({ orderId: id });
-
-    if (!order) return NextResponse.json({ error: "Order tidak ditemukan" }, { status: 404 });
-
-    return NextResponse.json({ message: "Order berhasil dihapus" }, { status: 200 });
-  } catch (err) {
-    console.error("❌ Delete order error:", err);
-    return NextResponse.json({ error: "Gagal menghapus order" }, { status: 500 });
   }
 }
